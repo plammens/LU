@@ -4,8 +4,9 @@
 #include <valarray>
 #include <initializer_list>
 #include <iterator>
-#include <stdexcept>
+#include <exception>
 #include <cmath>
+#include <cassert>
 
 
 
@@ -162,59 +163,6 @@ public:
 };
 
 
-
-//----- Triangular -----//
-
-/// Abstract Matrix subclass for triangular matrices
-class Triangular : public Matrix {
-public:
-    double operator()(index_t i, index_t j) const override;
-    double &operator()(index_t i, index_t j) override;
-
-protected:
-    /// Construct the internals of an n by n triangular matrix
-    explicit Triangular(size_t n) : Matrix(n, n*(n + 1)/2) {}
-
-    /// Initialize the contents from an 2D init list
-    void initFromList(const nested_init_list<double> &init);
-
-    /// Whether the element at (i, j) is inside the "triangle"
-    /// (defined by the particular subclass)
-    virtual bool isInTriangle(index_t i, index_t j) const = 0;
-
-    /// Size of the ith row of the triangle
-    virtual size_t rowSize(index_t i) const = 0;
-};
-
-
-class LowerTriangular : public Triangular {
-public:
-    explicit LowerTriangular(size_t n) : Triangular(n) {}
-    LowerTriangular(const nested_init_list<double> &init) : Triangular(init.size()) {
-        initFromList(init);
-    }
-
-private:
-    inline index_t flattenIndex(index_t i, index_t j) const override { return i*(i + 1)/2 + j; }
-    inline bool isInTriangle(index_t i, index_t j) const override { return j <= i; }
-    inline size_t rowSize(index_t i) const override { return i; }
-};
-
-
-class UpperTriangular : public Triangular {
-public:
-    explicit UpperTriangular(size_t n) : Triangular(n) {}
-    UpperTriangular(const nested_init_list<double> &init) : Triangular(init.size()) {
-        initFromList(init);
-    }
-
-private:
-    inline index_t flattenIndex(index_t i, index_t j) const override { return i*_n - i*(i + 1)/2 + j; }
-    inline bool isInTriangle(index_t i, index_t j) const override { return j >= i; }
-    inline size_t rowSize(index_t i) const override { return _n - i; }
-};
-
-
 //----- LU -----//
 
 class LUDecomposition {
@@ -228,19 +176,34 @@ public:
     explicit
     LUDecomposition(Matrix &mat, double tol = numcomp::DEFAULT_TOL);
 
-    /// Get the permutation vector
+    // getters:
     const std::valarray<index_t> &perm() const { return _perm; }
+    const Matrix &getDecompMatrix() { return _decomp; }
 
 private:
-    Matrix _decomp_mat;  ///< decomposition matrix (internal data storage)
+    Matrix _mat;  ///< decomposition matrix (internal data storage)
     std::valarray<index_t> _perm;  ///< permutation vector
     double _tol;  ///< numerical tolerance
 
     /// Performs the actual LU decomposition. Called upon construction.
     void decompose();
-    /// Swaps the row at pivot_index with the largest (relatively scaled) pivot
-    void scaledPartialPivoting(index_t pivot_index);
+
+    /// Swaps the row at pivot_index with the row with the (relatively) largest pivot.
+    index_t scaledPartialPivoting(index_t pivot_index);
+
+    class TriangularInterface;
 };
+
+
+/// Indicates that an algorithm encountered a singular matrix
+class SingularMatrixError : public std::exception {
+    static constexpr auto message = "singular matrix";
+public:
+    const char *what() const override { return message; }
+};
+
+
+
 
 
 #ifndef LU_DECLARATIONS_ONLY
@@ -324,49 +287,42 @@ bool Matrix::base_iterator::operator==(const Matrix::base_iterator &rhs) const {
 }
 
 
-//----- Triangular -----//
 
-double Triangular::operator()(index_t i, index_t j) const {
-    checkMatrixBounds(i, j);
-    if (not isInTriangle(i, j)) return 0;
-    return _data[flattenIndex(i, j)];
+
+//----- LUDecomposition -----//
+
+LUDecomposition::LUDecomposition(const Matrix &mat, double tol)
+        : _mat(mat), _tol(tol), _perm(mat.size()) {
+    // initialize permutation vector:
+    for (index_t i = 0; i < mat.size(); ++i) _perm[i] = i;
+    decompose();
 }
 
-double &Triangular::operator()(index_t i, index_t j) {
-    checkMatrixBounds(i, j);
-    if (not isInTriangle(i, j))
-        throw std::out_of_range("cannot write to null side of triangular matrix");
-    return _data[flattenIndex(i, j)];
-}
+void LUDecomposition::decompose() {
+    const size_t n = mat.size();
 
-void Triangular::initFromList(const nested_init_list<double> &init) {
-    index_t flattened = 0;
+    for (index_t pivot_index = 0; pivot_index < n - 1; ++pivot_index) {
+        // Swap rows if necessary, and get pivot:
+        index_t pivot_row_index = scaledPartialPivoting(pivot_index);
+        assert(pivot_row_index == _perm[pivot_index]);
+        const double pivot = _mat(pivot_row_index, pivot_index);
 
-    index_t i = 0;
-    for (const auto &initRow : init) {
-        size_t initRowSize = initRow.size();
-        if (initRowSize < rowSize(i) or initRowSize > _n)
-            throw std::invalid_argument("unevenly sized init list");
-
-        index_t j = 0;
-        for (double num : initRow) {
-            if (not isInTriangle(i, j)) {
-                if (num != 0.0)
-                    throw std::invalid_argument("null side of triangular matrix should be zero");
-            } else _data[flattened++] = num;
-            ++j;
+        // Update rows below:
+        // i is the "theoretical" index, pi is the corresponding permutated index
+        for (index_t i = pivot_index + 1, pi = _perm[i]; i < n; pi = _perm[++i]) {
+            const double multiplier = -mat(pi, pivot_index)/pivot;
+            _mat(pi, pivot_index) = 0.0;  // shortcut
+            for (index_t j = pivot_index + 1; j < n; ++j) // add pivot row to ith row
+                _mat(pi, j) += multiplier*_mat(pivot_row_index, j);
+            _mat(pi, pivot_index) = multiplier;  // write multiplier to lower triangle
         }
-
-        ++i;
     }
 }
 
-
-//---------- functions ----------//
-
-/**
+/* Helper function.
  * Returns the maximal absolute value of the numbers in a range.
  * @param first,last pair of forward input iterators describing the range
+ * @return the maximal absolute value
  */
 template<class FIter>
 double max_abs(FIter first, FIter last) {
@@ -376,54 +332,27 @@ double max_abs(FIter first, FIter last) {
     return max_value;
 }
 
-
-
-//----- LUDecomposition -----//
-
-LUDecomposition::LUDecomposition(const Matrix &mat, double tol)
-        : _decomp_mat(mat), _tol(tol), _perm(mat.size()) {
-    decompose();
-}
-
-void LUDecomposition::decompose() {
-    const size_t n = mat.size();
-    for (index_t pivot_index = 0; pivot_index < n - 1; ++pivot_index) {
-        // Swap rows if necessary, and get pivot:
-        scaledPartialPivoting(pivot_index);
-        const double pivot = _decomp_mat(pivot_index, pivot_index);
-
-        // Update rows below:
-        for (index_t i = pivot_index + 1; i < n; ++i) {
-            const double multiplier = -mat(i, pivot_index)/pivot;
-            _decomp_mat(i, pivot_index) = 0.0;  // shortcut
-            for (index_t j = pivot_index + 1; j < n; ++j) // add pivot row to ith row
-                _decomp_mat(i, j) += multiplier*mat(pivot_index, j);
-            _decomp_mat(i, pivot_index) = multiplier;  // write multiplier to lower triangle
-        }
-    }
-}
-
-void LUDecomposition::scaledPartialPivoting(index_t pivot_index) {
-    size_t n = _decomp_mat.size();
+index_t LUDecomposition::scaledPartialPivoting(index_t pivot_index) {
+    const size_t n = _mat.size();
     struct { double value; Index index; } max_pivot = {0, pivot_index};
 
     for (Index i = pivot_index; i < n; ++i) {
-        const Matrix::Row &row = mat[i];
-        double max_abs_value = max_abs(row.begin() + pivot_index, row.end());  // scaling factor
-        if (numeric::isnull(max_abs_value, tol)) return {false};  // null row --> singular matrix
+        double max_abs_value = max_abs(&_mat(i, pivot_index), &_mat(i, n));  // scaling factor
+        if (numeric::isnull(max_abs_value, tol)) throw SingularMatrixError();  // null row --> singular matrix
         // update max pivot:
-        double scaled_pivot = row[pivot_index]/max_abs_value;
+        double scaled_pivot = _mat(i, pivot_index)/max_abs_value;
         if (scaled_pivot > max_pivot.value) max_pivot = {scaled_pivot, i};
     }
 
-    std::swap(mat[pivot_index], mat[max_pivot.index]);  // constant complexity; just swaps pointers
-    return {true, perm};
+    // Swap the indices with the row with maximal pivot:
+    std::swap(_perm[pivot_index], _perm[max_pivot.index]);
+    return max_pivot.index;
 }
 
 //int lu(double **mat, int n, int perm[], double tol) {
 //}
 
 
-#endif  // LU_DECLARATIONS_ONLY
+#endif  // #ifndef LU_DECLARATIONS_ONLY
 
-#endif  // LU_LU_CPP
+#endif  // #ifndef LU_LU_CPP
