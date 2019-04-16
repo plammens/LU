@@ -6,7 +6,7 @@
 
 #include <cmath>
 
-namespace numeric {
+namespace numcomp {
     
     constexpr const double DEFAULT_TOL = 1e-12;
     
