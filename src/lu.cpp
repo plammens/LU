@@ -4,7 +4,7 @@
 #include <valarray>
 #include <initializer_list>
 #include <iterator>
-#include <exception>
+#include <stdexcept>
 #include <cmath>
 #include <cassert>
 
@@ -19,12 +19,13 @@ namespace numcomp {
 
     inline
     bool equal(double a, double b, double tol = DEFAULT_TOL) {
-        return std::abs(a - b) < tol;
+        const double &&diff = a - b;
+        return diff < tol and diff > -tol;
     }
 
     inline
     bool isnull(double a, double tol = DEFAULT_TOL) {
-        return equal(a, 0, tol);
+        return equal(a, 0., tol);
     }
 
     inline
@@ -295,7 +296,7 @@ LUDecomposition::LUDecomposition(const Matrix &mat, double tol)
 void LUDecomposition::decompose() {
     const size_t n = _mat.size();
 
-    for (index_t pivot_index = 0; pivot_index < n - 1; ++pivot_index) {
+    for (index_t pivot_index = 0; pivot_index < n; ++pivot_index) {
         // Swap rows if necessary, and get pivot:
         scaledPartialPivoting(pivot_index);
         const Matrix::Row &pivot_row = _mat[pivot_index];
@@ -333,9 +334,10 @@ void LUDecomposition::scaledPartialPivoting(index_t pivot_index) {
     for (index_t i = pivot_index; i < n; ++i) {
         const auto &row = _mat[i];
         double max_abs_value = max_abs(begin(row) + pivot_index, end(row));  // scaling factor
-        if (numcomp::isnull(max_abs_value, _tol)) throw SingularMatrixError();  // null row --> singular matrix
+        // if max_abs_value is zero, the whole row is, so the matrix is singular:
+        if (numcomp::isnull(max_abs_value, _tol)) throw SingularMatrixError();
         // update max pivot:
-        double scaled_pivot = row[pivot_index]/max_abs_value;
+        double scaled_pivot = std::abs(row[pivot_index])/max_abs_value;
         if (scaled_pivot > max_pivot.value) max_pivot = {scaled_pivot, i};
     }
 

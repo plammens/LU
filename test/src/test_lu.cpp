@@ -1,5 +1,4 @@
 #include <doctest.h>
-#include <iostream>
 #include <numeric>
 #include "debug.h"
 
@@ -16,9 +15,9 @@ TEST_SUITE ("matrix") {
 
         SUBCASE("init_list") {
             CHECK_THROWS_AS(Matrix({{1, 2}, {1}}), std::invalid_argument);
-            Matrix mat = {{1, 2}, {3, 4}};
-            REQUIRE(mat.size() == 2);
-            REQUIRE(mat == mat);
+            Matrix mat2 = {{1, 2}, {3, 4}};
+            CHECK(mat2.size() == 2);
+            CHECK(mat2 == mat2);
         }
     }
 
@@ -33,7 +32,6 @@ TEST_SUITE ("matrix") {
 
         bool correctElements = mat(0, 0) == 1 and mat(0, 1) == 2 and
                                mat(1, 0) == 3 and mat(1, 1) == 4;
-        std::cout << mat << std::endl;
         CHECK(correctElements);
     }
 
@@ -41,7 +39,7 @@ TEST_SUITE ("matrix") {
         Matrix mat = {{1,    2},
                       {3.14, 4}};
 
-        double sum = 0;
+        double sum = 0.;
         for (auto it = mat.begin(); it < mat.end(); ++it)
             sum += *it;
 
@@ -56,19 +54,44 @@ TEST_SUITE ("matrix") {
 TEST_SUITE("lu") {
 
     TEST_CASE("simple") {
-        Matrix test = {{1, 0},
-                       {0, 1}};
-        CHECK(LUDecomposition(test).getDecompMatrix() == test);
+        SUBCASE("2 by 2") {
+            Matrix test2 = {{1, 0},
+                           {0, 1}};
+            CHECK(LUDecomposition(test2).getDecompMatrix() == test2);
 
-        test = {{1, 0.5},
-                {1,   1}};
-        CHECK(LUDecomposition(test).getDecompMatrix() == Matrix{{1, 0.5},
-                                                                {1, 0.5}});
+            test2 = {{1, 0.5},
+                     {1,   1}};
+            CHECK(LUDecomposition(test2).getDecompMatrix() == Matrix{{1, 0.5},
+                                                                     {1, 0.5}});
 
-        Matrix test3 = {{1, 2, 1},
-                        {0, 1, 0},
-                        {1, 0, 0}};
-        std::cout << LUDecomposition(test3).getDecompMatrix() << std::endl;
+            test2 = {{ 2, 5},
+                     {-1, 1}};
+            CHECK(LUDecomposition(test2).getDecompMatrix() == Matrix{{-1, 1},
+                                                                     {-2, 7}});
+
+            test2 = {{ 2,   3},
+                     {-1, 0.5}};
+            CHECK(LUDecomposition(test2).getDecompMatrix() == Matrix{{-1, 0.5},
+                                                                     {-2,   4}});
+        }
+
+        SUBCASE("singular") {
+            CHECK_THROWS_AS(LUDecomposition(Matrix{{0, 0}, {0, 0}}), SingularMatrixError);
+            CHECK_THROWS_AS(LUDecomposition(Matrix{{1, 1}, {1, 1}}), SingularMatrixError);
+        }
+
+        SUBCASE("3 by 3") {
+            Matrix test3 = {{1, 2, 1},
+                            {0, 1, 0},
+                            {1, 0, 0}};
+            CHECK(LUDecomposition(test3).getDecompMatrix() == Matrix{{1., 0., 0.},
+                                                                     {0., 1., 0.},
+                                                                     {1., 2., 1.}});
+
+            test3 = {{0, 0, 0},
+                     {0, 0, 0},
+                     {0, 0, 0}};
+        }
     }
 
 }
