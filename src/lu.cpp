@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <cassert>
+#include <numeric>
 
 
 
@@ -28,26 +29,6 @@ namespace numcomp {
         return equal(a, 0., tol);
     }
 
-    inline
-    bool leq(double a, double b, double tol = DEFAULT_TOL) {
-        return a < b + tol;
-    }
-
-    inline
-    bool geq(double a, double b, double tol = DEFAULT_TOL) {
-        return leq(b, a, tol);
-    }
-
-    inline
-    bool less(double a, double b, double tol = DEFAULT_TOL) {
-        return not leq(b, a, tol);
-    }
-
-    inline
-    bool greater(double a, double b, double tol = DEFAULT_TOL) {
-        return less(b, a, tol);
-    }
-
 }
 
 
@@ -67,6 +48,9 @@ public:
 
     /// Create an n*n dense matrix
     explicit Matrix(size_t n) : _n(n), _data(Row(_n), _n) {}
+
+    /// Copy from array of pointers to rows
+    Matrix(double **mat, size_t n);
 
     /// Construct a matrix from a 2-dimensional init list
     Matrix(const InitList &init);
@@ -163,6 +147,17 @@ public:
 
 //----- LU -----//
 
+class Permutation {
+public:
+    explicit Permutation(size_t n);
+    void permute(index_t a, index_t b);
+    inline const std::valarray<index_t> &vector() const { return _vec; }
+    inline bool parity() const { return _parity; }
+private:
+    std::valarray<index_t> _vec;
+    bool _parity = false;
+};
+
 class LUDecomposition {
 public:
     /**
@@ -175,12 +170,12 @@ public:
     LUDecomposition(const Matrix &mat, double tol = numcomp::DEFAULT_TOL);
 
     // getters:
-    const std::valarray<index_t> &perm() const { return _perm; }
+    const Permutation &perm() const { return _perm; }
     const Matrix &getDecompMatrix() { return _mat; }
 
 private:
     Matrix _mat;  ///< decomposition matrix (internal data storage)
-    std::valarray<index_t> _perm;  ///< permutation vector
+    Permutation _perm;
     double _tol;  ///< numerical tolerance
 
     /// Performs the actual LU decomposition. Called upon construction.
@@ -210,6 +205,11 @@ public:
 
 Matrix::Matrix(const Matrix::InitList &init) : Matrix(init.size()) {
     this->operator=(init);
+}
+
+Matrix::Matrix(double **mat, size_t n) : _n(n), _data(_n) {
+    for (index_t i = 0; i < n; ++i)
+        _data[i] = std::valarray<double>(mat[i], n);
 }
 
 Matrix& Matrix::operator=(const InitList &init) {
@@ -244,6 +244,7 @@ Matrix::const_iterator Matrix::begin() const { return const_iterator(this, 0, 0)
 Matrix::const_iterator Matrix::end() const { return const_iterator(this, _n, 0); }
 Matrix::iterator Matrix::begin() { return iterator(this, 0, 0); }
 Matrix::iterator Matrix::end() { return iterator(this, _n, 0); }
+
 
 
 //----- Matrix::iterator -----//
@@ -288,8 +289,6 @@ bool Matrix::base_iterator::operator==(const Matrix::base_iterator &rhs) const {
 
 LUDecomposition::LUDecomposition(const Matrix &mat, double tol)
         : _mat(mat), _perm(mat.size()), _tol(tol) {
-    // initialize permutation vector:
-    for (index_t i = 0; i < mat.size(); ++i) _perm[i] = i;
     decompose();
 }
 
@@ -313,6 +312,16 @@ void LUDecomposition::decompose() {
         }
     }
 }
+
+Permutation::Permutation(size_t n) : _vec(n) {
+    for (index_t i = 0; i < n; ++i) _vec[i] = i;
+}
+
+void Permutation::permute(index_t a, index_t b) {
+    std::swap(_vec[a], _vec[b]);
+    _parity = not _parity;
+}
+
 
 /* Helper function.
  * Returns the maximal absolute value of the numbers in a range.
@@ -342,12 +351,20 @@ void LUDecomposition::scaledPartialPivoting(index_t pivot_index) {
     }
 
     // Swap the indices with the row with maximal pivot:
-    std::swap(_perm[pivot_index], _perm[max_pivot.index]);
+    _perm.permute(pivot_index, max_pivot.index);
     std::swap(_mat[pivot_index], _mat[max_pivot.index]);  // constant complexity; just swaps pointers
 }
 
-//int lu(double **mat, int n, int perm[], double tol) {
-//}
+int lu(double **a, int n, int perm[], double tol) {
+    Matrix mat(a, n);
+    try {
+        LUDecomposition lu(mat, tol);
+        const auto &luPerm = lu.perm();
+        const auto &permVector = luPerm.vector();
+        for (int i = 0; i < n; ++i) perm[i] = permVector[i];
+        return (luPerm.parity()? -1 : 1);
+    } catch (SingularMatrixError &) { return 0; }
+}
 
 
 #endif  // #ifndef LU_DECLARATIONS_ONLY

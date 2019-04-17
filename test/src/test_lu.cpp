@@ -75,22 +75,30 @@ TEST_SUITE("lu") {
                                                                      {-2,   4}});
         }
 
-        SUBCASE("singular") {
-            CHECK_THROWS_AS(LUDecomposition(Matrix{{0, 0}, {0, 0}}), SingularMatrixError);
-            CHECK_THROWS_AS(LUDecomposition(Matrix{{1, 1}, {1, 1}}), SingularMatrixError);
-        }
-
         SUBCASE("3 by 3") {
             Matrix test3 = {{1, 2, 1},
                             {0, 1, 0},
                             {1, 0, 0}};
-            CHECK(LUDecomposition(test3).getDecompMatrix() == Matrix{{1., 0., 0.},
-                                                                     {0., 1., 0.},
-                                                                     {1., 2., 1.}});
+            LUDecomposition lu(test3);
+            CHECK(lu.getDecompMatrix() == Matrix{{1., 0., 0.},
+                                                 {0., 1., 0.},
+                                                 {1., 2., 1.}});
+            CHECK((lu.perm().vector() == std::valarray<index_t>{2, 1, 0}).min());
+        }
 
-            test3 = {{0, 0, 0},
-                     {0, 0, 0},
-                     {0, 0, 0}};
+        SUBCASE("singular") {
+            CHECK_THROWS_AS(LUDecomposition(Matrix{{0, 0},
+                                                   {0, 0}}), SingularMatrixError);
+            CHECK_THROWS_AS(LUDecomposition(Matrix{{1, 1},
+                                                   {1, 1}}), SingularMatrixError);
+            CHECK_THROWS_AS(LUDecomposition(Matrix{{9e-13, 0},
+                                                   {0,     1}}), SingularMatrixError);
+
+            Matrix singular = {{1, 0, 0},
+                               {0, 1, 1},
+                               {1, 1, 1}};
+
+            CHECK_THROWS_AS(LUDecomposition lu(singular);, SingularMatrixError);
         }
     }
 
