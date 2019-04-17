@@ -57,31 +57,33 @@ typedef size_t index_t;
 using std::begin;
 using std::end;
 
-template<typename T>
-using nested_init_list = std::initializer_list<std::initializer_list<T>>;
-
-
 /// Representation of a square matrix
 class Matrix {
 public:
-    /// Create an n*n dense matrix with entries set to 0
-    explicit Matrix(size_t n) : Matrix(n, n*n) {}
+    typedef std::valarray<double> Row;
+    typedef std::valarray<Row> Data;
+    typedef std::initializer_list<std::initializer_list<double>> InitList;
+
+    /// Create an n*n dense matrix
+    explicit Matrix(size_t n) : _n(n), _data(Row(_n), _n) {}
+
     /// Construct a matrix from a 2-dimensional init list
-    Matrix(const nested_init_list<double> &init);
+    Matrix(const InitList &init);
+    Matrix &operator=(const InitList &init);
 
     // Getters:
     inline size_t size() const { return _n; }
-    inline const std::valarray<double> &data() { return _data; }
+    inline const Data &data() { return _data; }
 
     // Subscript operators (const and non-const):
     virtual double operator()(index_t i, index_t j) const;
     virtual double &operator()(index_t i, index_t j);
+    const Row &operator[](index_t i) const { return _data[i]; }
+    Row &operator[](index_t i) { return _data[i]; }
 
     // Iterator stuff:
     class iterator;
-
     class const_iterator;
-
     const_iterator begin() const;
     const_iterator end() const;
     iterator begin();
@@ -89,17 +91,10 @@ public:
 
 protected:
     size_t _n;  /// dimension of matrix
-    std::valarray<double> _data;  /// flat array containing the data
-
-    // Constructs an n*n Matrix with custom data size (intended for subclasses)
-    Matrix(size_t dimension, size_t dataSize) : _n(dimension), _data(0.0, dataSize) {}
+    Data _data;  /// flat array containing the data
 
     // Throws exception if (i, j) is out-of-bounds (i.e. i >= _n or j >= _n)
     void checkMatrixBounds(index_t i, index_t j) const;
-
-    // Get the appropriate index for the internal flat array
-    virtual inline
-    index_t flattenIndex(index_t i, index_t j) const { return _n*i + j; };
 
 private:
     class base_iterator;
@@ -124,7 +119,7 @@ public:
     bool operator>=(const base_iterator &rhs) const { return not(*this < rhs); }
 
 protected:
-    base_iterator(const Matrix *mat, index_t i, index_t j) : mat(mat), i(i), j(j) {}
+    base_iterator(const Matrix *mat, index_t i, index_t j);
 
     const Matrix *mat;
     index_t i, j;
@@ -163,6 +158,8 @@ public:
 };
 
 
+
+
 //----- LU -----//
 
 class LUDecomposition {
@@ -174,11 +171,11 @@ public:
      * @throws SingularMatrixError if mat is singular
      */
     explicit
-    LUDecomposition(Matrix &mat, double tol = numcomp::DEFAULT_TOL);
+    LUDecomposition(const Matrix &mat, double tol = numcomp::DEFAULT_TOL);
 
     // getters:
     const std::valarray<index_t> &perm() const { return _perm; }
-    const Matrix &getDecompMatrix() { return _decomp; }
+    const Matrix &getDecompMatrix() { return _mat; }
 
 private:
     Matrix _mat;  ///< decomposition matrix (internal data storage)
@@ -189,9 +186,7 @@ private:
     void decompose();
 
     /// Swaps the row at pivot_index with the row with the (relatively) largest pivot.
-    index_t scaledPartialPivoting(index_t pivot_index);
-
-    class TriangularInterface;
+    void scaledPartialPivoting(index_t pivot_index);
 };
 
 
@@ -199,7 +194,7 @@ private:
 class SingularMatrixError : public std::exception {
     static constexpr auto message = "singular matrix";
 public:
-    const char *what() const override { return message; }
+    const char *what() const noexcept override { return message; }
 };
 
 
@@ -212,23 +207,31 @@ public:
 
 //----- Matrix -----//
 
-Matrix::Matrix(const nested_init_list<double> &init) : _n(init.size()), _data(_n*_n) {
+Matrix::Matrix(const Matrix::InitList &init) : Matrix(init.size()) {
+    this->operator=(init);
+}
+
+Matrix& Matrix::operator=(const InitList &init) {
     index_t i = 0;
-    for (const auto &row : init) {
-        if (row.size() != _n)
-            throw std::invalid_argument("unevenly sized init list for square matrix");
-        for (double num : row) _data[i++] = num;
+    for (const auto &initRow : init) {
+        if (initRow.size() != _n)
+            throw std::invalid_argument("badly shaped init list for square matrix");
+        auto &row = _data[i];
+        index_t j = 0;
+        for (double num : initRow) row[j++] = num;
+        ++i;
     }
+    return *this;
 }
 
 double Matrix::operator()(index_t i, index_t j) const {
     checkMatrixBounds(i, j);
-    return _data[flattenIndex(i, j)];
+    return _data[i][j];
 }
 
 double &Matrix::operator()(index_t i, index_t j) {
     checkMatrixBounds(i, j);
-    return _data[flattenIndex(i, j)];
+    return _data[i][j];
 }
 
 inline
@@ -236,29 +239,23 @@ void Matrix::checkMatrixBounds(index_t i, index_t j) const {
     if (i >= _n or j >= _n) throw std::out_of_range("matrix subscript out of range");
 }
 
-Matrix::const_iterator Matrix::begin() const {
-    return const_iterator(this, 0, 0);
-}
+Matrix::const_iterator Matrix::begin() const { return const_iterator(this, 0, 0); }
+Matrix::const_iterator Matrix::end() const { return const_iterator(this, _n, 0); }
+Matrix::iterator Matrix::begin() { return iterator(this, 0, 0); }
+Matrix::iterator Matrix::end() { return iterator(this, _n, 0); }
 
-Matrix::const_iterator Matrix::end() const {
-    return const_iterator(this, _n, 0);
-}
-
-Matrix::iterator Matrix::begin() {
-    return iterator(this, 0, 0);
-}
-
-Matrix::iterator Matrix::end() {
-    return iterator(this, _n, 0);
-}
 
 //----- Matrix::iterator -----//
 
+Matrix::base_iterator::base_iterator(const Matrix *mat, index_t i, index_t j)
+        : mat(mat), i(i), j(j) {
+    const size_t n = mat->size();
+    this->i += j/n;
+    this->j %= n;
+}
+
 Matrix::base_iterator &Matrix::base_iterator::operator++() {
-    if (++j == mat->size()) {
-        ++i;
-        j = 0;
-    }
+    if (++j == mat->size()) { ++i; j = 0; }
     return *this;
 }
 
@@ -270,16 +267,13 @@ Matrix::base_iterator &Matrix::base_iterator::operator+=(ptrdiff_t offset) {
 }
 
 Matrix::base_iterator &Matrix::base_iterator::operator--() {
-    if (j == 0) {
-        --i;
-        j = mat->size() - 1;
-    }
+    if (j == 0) { --i; j = mat->size() - 1; }
     else --j;
     return *this;
 }
 
 ptrdiff_t Matrix::base_iterator::operator-(const Matrix::base_iterator &rhs) const {
-    return mat->flattenIndex(i, j) - mat->flattenIndex(rhs.i, rhs.j);
+    return mat->_n*(ptrdiff_t(i) - ptrdiff_t(rhs.i)) + ptrdiff_t(j) - ptrdiff_t(rhs.j);
 }
 
 bool Matrix::base_iterator::operator==(const Matrix::base_iterator &rhs) const {
@@ -292,29 +286,29 @@ bool Matrix::base_iterator::operator==(const Matrix::base_iterator &rhs) const {
 //----- LUDecomposition -----//
 
 LUDecomposition::LUDecomposition(const Matrix &mat, double tol)
-        : _mat(mat), _tol(tol), _perm(mat.size()) {
+        : _mat(mat), _perm(mat.size()), _tol(tol) {
     // initialize permutation vector:
     for (index_t i = 0; i < mat.size(); ++i) _perm[i] = i;
     decompose();
 }
 
 void LUDecomposition::decompose() {
-    const size_t n = mat.size();
+    const size_t n = _mat.size();
 
     for (index_t pivot_index = 0; pivot_index < n - 1; ++pivot_index) {
         // Swap rows if necessary, and get pivot:
-        index_t pivot_row_index = scaledPartialPivoting(pivot_index);
-        assert(pivot_row_index == _perm[pivot_index]);
-        const double pivot = _mat(pivot_row_index, pivot_index);
+        scaledPartialPivoting(pivot_index);
+        const Matrix::Row &pivot_row = _mat[pivot_index];
+        const double pivot = pivot_row[pivot_index];
 
-        // Update rows below:
-        // i is the "theoretical" index, pi is the corresponding permutated index
-        for (index_t i = pivot_index + 1, pi = _perm[i]; i < n; pi = _perm[++i]) {
-            const double multiplier = -mat(pi, pivot_index)/pivot;
-            _mat(pi, pivot_index) = 0.0;  // shortcut
-            for (index_t j = pivot_index + 1; j < n; ++j) // add pivot row to ith row
-                _mat(pi, j) += multiplier*_mat(pivot_row_index, j);
-            _mat(pi, pivot_index) = multiplier;  // write multiplier to lower triangle
+        // Update rows below the pivot row:
+        for (index_t i = pivot_index + 1; i < n;++i) {
+            Matrix::Row &row = _mat[i];
+            const double multiplier = row[pivot_index]/pivot;
+            // Subtract multiple of pivot row from current row:
+            auto slice = std::slice(pivot_index + 1, n - pivot_index - 1, 1);
+            row[slice] -= multiplier*pivot_row[slice];
+            row[pivot_index] = multiplier;  // write multiplier to lower triangle
         }
     }
 }
@@ -332,21 +326,22 @@ double max_abs(FIter first, FIter last) {
     return max_value;
 }
 
-index_t LUDecomposition::scaledPartialPivoting(index_t pivot_index) {
+void LUDecomposition::scaledPartialPivoting(index_t pivot_index) {
     const size_t n = _mat.size();
-    struct { double value; Index index; } max_pivot = {0, pivot_index};
+    struct { double value; index_t index; } max_pivot = {0, pivot_index};
 
-    for (Index i = pivot_index; i < n; ++i) {
-        double max_abs_value = max_abs(&_mat(i, pivot_index), &_mat(i, n));  // scaling factor
-        if (numeric::isnull(max_abs_value, tol)) throw SingularMatrixError();  // null row --> singular matrix
+    for (index_t i = pivot_index; i < n; ++i) {
+        const auto &row = _mat[i];
+        double max_abs_value = max_abs(begin(row) + pivot_index, end(row));  // scaling factor
+        if (numcomp::isnull(max_abs_value, _tol)) throw SingularMatrixError();  // null row --> singular matrix
         // update max pivot:
-        double scaled_pivot = _mat(i, pivot_index)/max_abs_value;
+        double scaled_pivot = row[pivot_index]/max_abs_value;
         if (scaled_pivot > max_pivot.value) max_pivot = {scaled_pivot, i};
     }
 
     // Swap the indices with the row with maximal pivot:
     std::swap(_perm[pivot_index], _perm[max_pivot.index]);
-    return max_pivot.index;
+    std::swap(_mat[pivot_index], _mat[max_pivot.index]);  // constant complexity; just swaps pointers
 }
 
 //int lu(double **mat, int n, int perm[], double tol) {

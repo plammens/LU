@@ -4,46 +4,12 @@
 #include "debug.h"
 
 
-//TEST_SUITE ("lu") {
-//
-//    TEST_CASE ("max_abs") {
-//        Row_ arr = {-1, 2, -3, 1.5};
-//        CHECK(max_abs(begin(arr), end(arr)) == 3);
-//    }
-//
-//    TEST_CASE ("scaled partial pivoting") {
-//        Matrix_ mat = {{1, 2},
-//                      {3, 4}};
-//        REQUIRE(scaledPartialPivoting(mat, 0));
-//        CHECK(matEqual(mat, Matrix_{{3, 4},
-//                                   {1, 2}}));
-//
-//        mat = {{10, 100},
-//               {5,  5}};
-//        CHECK(scaledPartialPivoting(mat, 0));
-//        CHECK(matEqual(mat, Matrix_{{5,  5},
-//                                   {10, 100}}));
-//
-//        SUBCASE("singular") {
-//            mat = {{0, 0},
-//                   {0, 0}};
-//            REQUIRE(not scaledPartialPivoting(mat, 0));
-//
-//            mat = {{1,       1},
-//                   {0.9e-12, 0.9e-12}};
-//            CHECK(not scaledPartialPivoting(mat, 0));
-//        }
-//    }
-//
-//}
-
-
 TEST_SUITE ("matrix") {
 
     TEST_CASE ("ctor") {
         Matrix mat(3);
         REQUIRE(mat.size() == 3);
-        REQUIRE(mat.data().size() == 9);
+        REQUIRE(mat.data().size() == 3);
         CHECK(mat == Matrix({{0, 0, 0},
                              {0, 0, 0},
                              {0, 0, 0}}));
@@ -67,6 +33,7 @@ TEST_SUITE ("matrix") {
 
         bool correctElements = mat(0, 0) == 1 and mat(0, 1) == 2 and
                                mat(1, 0) == 3 and mat(1, 1) == 4;
+        std::cout << mat << std::endl;
         CHECK(correctElements);
     }
 
@@ -78,9 +45,30 @@ TEST_SUITE ("matrix") {
         for (auto it = mat.begin(); it < mat.end(); ++it)
             sum += *it;
 
-        double expectedSum = mat.data().sum();
+        double expectedSum = mat.data().sum().sum();
         CHECK(sum == expectedSum);
         CHECK(std::accumulate(mat.begin(), mat.end(), 0.0) == expectedSum);
+    }
+
+}
+
+
+TEST_SUITE("lu") {
+
+    TEST_CASE("simple") {
+        Matrix test = {{1, 0},
+                       {0, 1}};
+        CHECK(LUDecomposition(test).getDecompMatrix() == test);
+
+        test = {{1, 0.5},
+                {1,   1}};
+        CHECK(LUDecomposition(test).getDecompMatrix() == Matrix{{1, 0.5},
+                                                                {1, 0.5}});
+
+        Matrix test3 = {{1, 2, 1},
+                        {0, 1, 0},
+                        {1, 0, 0}};
+        std::cout << LUDecomposition(test3).getDecompMatrix() << std::endl;
     }
 
 }
