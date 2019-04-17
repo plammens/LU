@@ -100,6 +100,29 @@ TEST_SUITE("lu") {
 
             CHECK_THROWS_AS(LUDecomposition lu(singular);, SingularMatrixError);
         }
+
+
+    }
+
+    TEST_CASE("array") {
+        auto a = newmat(2);
+        int perm[2];
+
+        CHECK(not lu(a, 2, perm, numcomp::DEFAULT_TOL));
+
+        a = newmat(2);
+        a[0][0] = 1; a[1][1] = 1;
+        CHECK(lu(a, 2, perm, numcomp::DEFAULT_TOL) == 1);
+        CHECK((a[0][0] == 1 and a[0][1] == 0 and
+               a[1][0] == 0 and a[1][1] == 1));
+        CHECK((perm[0] == 0 and perm[1] == 1));
+
+        a[0][0] =  2; a[0][1] = 5;
+        a[1][0] = -1; a[1][1] = 1;
+        CHECK(lu(a, 2, perm, numcomp::DEFAULT_TOL) == -1);
+        CHECK((a[0][0] == -1 and a[0][1] == 1 and
+               a[1][0] == -2 and a[1][1] == 7));
+        CHECK((perm[0] == 1 and perm[1] == 0));
     }
 
 }

@@ -13,6 +13,14 @@
 
 //--------------- DECLARATIONS ---------------//
 
+// Aliases and using declarations:
+using std::size_t;
+using std::ptrdiff_t;
+typedef size_t index_t;
+using std::begin;
+using std::end;
+
+
 /// Namespace for numerical comparisons
 namespace numcomp {
 
@@ -32,12 +40,7 @@ namespace numcomp {
 }
 
 
-// Aliases and using declarations:
-using std::size_t;
-using std::ptrdiff_t;
-typedef size_t index_t;
-using std::begin;
-using std::end;
+//---------- Matrix class ----------//
 
 /// Representation of a square matrix
 class Matrix {
@@ -194,6 +197,26 @@ public:
 };
 
 
+//----- C-style array interface -----//
+
+/// Allocate space for an n by n matrix
+inline double **newmat(size_t n) {
+    auto a = new double*[n];
+    for (index_t i = 0; i < n; ++i) a[i] = new double[n]();
+    return a;
+}
+
+/// Free memory occupied by an n by n matrix
+inline void freemat(double **a, size_t n) {
+    for (index_t i = 0; i < n; ++i) delete[] a[i];
+    delete[] a;
+}
+
+/// Copy the contents of a matrix to a c-style array
+void copy(const Matrix &mat, double **a);
+
+int lu(double **a, int n, int perm[], double tol);
+
 
 
 
@@ -318,8 +341,10 @@ Permutation::Permutation(size_t n) : _vec(n) {
 }
 
 void Permutation::permute(index_t a, index_t b) {
-    std::swap(_vec[a], _vec[b]);
-    _parity = not _parity;
+    if (a != b) {
+        std::swap(_vec[a], _vec[b]);
+        _parity = not _parity;
+    }
 }
 
 
@@ -355,15 +380,28 @@ void LUDecomposition::scaledPartialPivoting(index_t pivot_index) {
     std::swap(_mat[pivot_index], _mat[max_pivot.index]);  // constant complexity; just swaps pointers
 }
 
+
+//----- C-style array interface -----//
+
+void copy(const Matrix &mat, double **a) {
+    const size_t n = mat.size();
+    for (index_t i = 0; i < n; ++i)
+        for (index_t j = 0; j < n; ++j)
+            a[i][j] = mat[i][j];
+}
+
 int lu(double **a, int n, int perm[], double tol) {
     Matrix mat(a, n);
     try {
         LUDecomposition lu(mat, tol);
         const auto &luPerm = lu.perm();
-        const auto &permVector = luPerm.vector();
-        for (int i = 0; i < n; ++i) perm[i] = permVector[i];
+        copy(lu.getDecompMatrix(), a);
+        std::copy(begin(luPerm.vector()), end(luPerm.vector()), perm);
         return (luPerm.parity()? -1 : 1);
-    } catch (SingularMatrixError &) { return 0; }
+    } catch (SingularMatrixError &) {
+        freemat(a, n);
+        return 0;
+    }
 }
 
 
