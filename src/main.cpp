@@ -4,9 +4,9 @@
 #include <string>
 #include <exception>
 #include <sstream>
+#include <regex>
 
 #define SISTEMA_DECLARATIONS_ONLY
-
 #include "sistema.cpp"
 
 
@@ -101,11 +101,18 @@ void printResult(const SolveResult &result, std::ostream &os) {
     os.flush();
 }
 
-void parseFile(const char *filename) {
-    static index_t id = 0;
+std::string getFileName(const std::string &path) {
+    static const std::regex regex(R"(^.*?[/\\]?(\w+)(\.\w+)?$)");
+    std::smatch match;
+    std::regex_match(path, match, regex);
+    if (not match.empty()) return match[1];
+    return "";
+}
 
-    std::ifstream inputFile(filename);
-    if (not inputFile.is_open()) throw IOError(filename);
+
+void parseFile(const char *filePath) {
+    std::ifstream inputFile(filePath);
+    if (not inputFile.is_open()) throw IOError(filePath);
 
     Matrix &&A = readMatrix(inputFile);
     Vector &&b = readVector(inputFile, A.size());
@@ -113,7 +120,7 @@ void parseFile(const char *filename) {
     if (not result) throw SingularMatrixError();
     else {
         std::ostringstream oss;
-        oss << "SOLUTION" << std::setw(2) << std::setfill('0') << id++ << ".DAT";
+        oss << "SOLUTION_" << getFileName(filePath) << ".DAT";
         std::string outName = oss.str();
         std::ofstream outFile(outName);
         if (not outFile.is_open()) throw IOError(outName.c_str());
