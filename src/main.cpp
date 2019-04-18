@@ -96,7 +96,9 @@ std::string getFileName(const std::string &path) {
 }
 
 
-void parseFile(const char *filePath) {
+// Parses the contents of a matrix file, solves the system
+// and returns the file path of the output file
+std::string parseFile(const char *filePath) {
     std::ifstream inputFile(filePath);
     if (not inputFile.is_open()) throw IOError(filePath);
 
@@ -112,6 +114,7 @@ void parseFile(const char *filePath) {
         std::ofstream outFile(outName);
         if (not outFile.is_open()) throw IOError(outName.c_str());
         printResult(result, outFile);
+        return outName;
     }
 }
 
@@ -127,8 +130,14 @@ void printError(const char *message, const char *arg = nullptr) {
 
 int main(int argc, char *argv[]) {
     for (int i = 1; i < argc; ++i) {
-        try { parseFile(argv[i]); }
-        catch (std::exception &e) { printError(e.what()); }
+        try {
+            std::cout << "solving " << argv[i] << "... " << std::flush;
+            std::string &&outName = parseFile(argv[i]);
+            std::cout << "done. -> " << outName << std::endl;
+        } catch (std::exception &e) {
+            std::cout << std::endl;
+            printError(e.what());
+        }
     }
 }
 
