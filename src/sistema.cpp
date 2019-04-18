@@ -1,7 +1,7 @@
-#include <utility>
-
 #ifndef LU_SISTEMA_CPP
 #define LU_SISTEMA_CPP
+
+#include <cassert>
 
 #define RESOL_DECLARATIONS_ONLY
 #define LU_DECLARATIONS_ONLY
@@ -27,18 +27,18 @@ public:
     const Vector &solution() const;
 
     inline const LUDecomposition &getLU() const { return _luObj; }
-    inline double tol() const { return _tol; }
+    inline double tol() const { return _success? _luObj.tol() : _tol; }
     inline double residue() const { return _residue; }
 
 private:
     bool _success = false;
     LUDecomposition _luObj = {};
     Vector _solution = {};
-    double _tol = 0.0;
     double _residue = 0.0;
+    double _tol = 0.0;
 
-    explicit SolveResult(bool success, Vector &&solution, LUDecomposition &&luObj);
-    SolveResult() = default;
+    explicit SolveResult(bool success, LUDecomposition &&luObj, Vector &&solution);
+    explicit SolveResult(double tol) : _tol(tol) {}
 
     friend SolveResult solve(const Matrix &, const Vector &, double tol);
 };
@@ -56,13 +56,14 @@ private:
 SolveResult solve(const Matrix &A, const Vector &b, double tol = numcomp::DEFAULT_TOL);
 
 /**
- * Calculate the residue for the approximate solution x to the system Ax = b
+ * Calculate the relative residue for the approximate solution x
+ * to the linear system Ax = b
  * @param A  matrix
- * @param b  vector of independent terms
  * @param x  approximate solution
- * @return  ||Ax - b||/||x||
+ * @param b  vector of independent terms
+ * @return  ||Ax - b||_∞/||x||_∞
  */
-double residue(const Matrix &A, const Vector &b, const Vector &x);
+double residue(const Matrix &A, const Vector &x, const Vector &b);
 
 
 
@@ -71,25 +72,22 @@ double residue(const Matrix &A, const Vector &b, const Vector &x);
 int sistema(double **a, double x[], double b[], int n, double tol);
 
 
-
-
 #ifndef SISTEMA_DECLARATIONS_ONLY
 //---------- IMPLEMENTATION ----------//
 
 SolveResult solve(const Matrix &A, const Vector &b, double tol) {
     try {
         LUDecomposition luObj(A, tol);
-        auto &&res = SolveResult(true, solve(luObj, b), std::move(luObj));
-        res._tol = tol;
+        auto &&res = SolveResult(true, std::move(luObj), solve(luObj, b));
         res._residue = residue(A, res._solution, b);
         return std::move(res);
     } catch (SingularMatrixError &) {
-        return SolveResult();
+        return SolveResult(tol);
     }
 }
 
 
-SolveResult::SolveResult(bool success, Vector &&solution, LUDecomposition &&luObj)
+SolveResult::SolveResult(bool success, LUDecomposition &&luObj, Vector &&solution)
         : _success(success), _luObj(std::move(luObj)), _solution(std::move(solution)) {}
 
 const Vector &SolveResult::solution() const {
@@ -117,7 +115,7 @@ double norm(const Vector &v) {
     return std::abs(v).max();
 }
 
-double residue(const Matrix &A, const Vector &b, const Vector &x) {
+double residue(const Matrix &A, const Vector &x, const Vector &b) {
     return norm(A*x - b)/norm(x);
 }
 
@@ -131,9 +129,8 @@ int sistema(double **a, double *x, double *b, int n, double tol) {
     if (not result) return 0;
     const Vector &solution = result.solution();
     std::copy(begin(solution), end(solution), x);
-    return result.getLU().perm().parity()? -1 : 1;
+    return result.getLU().perm().parity() ? -1 : 1;
 }
-
 
 
 #endif  // #ifndef SISTEMA_DECLARATIONS_ONLY

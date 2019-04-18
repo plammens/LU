@@ -6,8 +6,7 @@
 #include <iterator>
 #include <stdexcept>
 #include <cmath>
-#include <cassert>
-#include <numeric>
+#include <sstream>
 
 
 
@@ -23,20 +22,7 @@ using std::end;
 
 /// Namespace for numerical comparisons
 namespace numcomp {
-
     constexpr const double DEFAULT_TOL = 1e-12;
-
-    inline
-    bool equal(double a, double b, double tol = DEFAULT_TOL) {
-        const double &&diff = a - b;
-        return diff < tol and diff > -tol;
-    }
-
-    inline
-    bool isnull(double a, double tol = DEFAULT_TOL) {
-        return equal(a, 0., tol);
-    }
-
 }
 
 
@@ -77,7 +63,7 @@ public:
     iterator end();
 
 private:
-    size_t _n;  ///< dimension of matrix
+    size_t _n = 0;  ///< dimension of matrix
     Data _data;  ///< array of `std::valarray`s containing the matrix data
 
     // Throws exception if (i, j) is out-of-bounds (i.e. i >= _n or j >= _n)
@@ -179,8 +165,9 @@ public:
     LUDecomposition() = default;
 
     // getters:
-    const Permutation &perm() const { return _perm; }
-    const Matrix &decompMatrix() const { return _mat; }
+    inline const Permutation &perm() const { return _perm; }
+    inline const Matrix &decompMatrix() const { return _mat; }
+    inline double tol() const { return _tol; }
 
 private:
     Matrix _mat;  ///< decomposition matrix (internal data storage)
@@ -195,11 +182,33 @@ private:
 };
 
 
-/// Indicates that an algorithm encountered a singular matrix
-class SingularMatrixError : public std::exception {
-    static constexpr auto message = "singular matrix";
+//----- Exceptions -----//
+
+/// Abstract base exception class
+class BaseException : public std::exception {
+protected:
+    std::string message;  ///< message to be returned by what()
+
+    BaseException() = default;
+    explicit BaseException(const char *baseMessage, const std::string &details) {
+        std::ostringstream oss(baseMessage, std::ios::ate);
+        if (not details.empty()) oss << " (" << details << ')';
+        message = oss.str();
+    }
+
 public:
-    const char *what() const noexcept override { return message; }
+    /// `std::exception`-compliant message getter
+    const char *what() const noexcept override { return message.c_str(); }
+};
+
+/// Indicates that an algorithm encountered a singular matrix
+class SingularMatrixError : public BaseException {
+public:
+    static constexpr auto baseMessage = "singular matrix";
+    explicit SingularMatrixError(double tol, const std::string &details = "");
+
+private:
+    static std::string getDetails(const std::string &details, double tol);
 };
 
 
@@ -333,13 +342,12 @@ void LUDecomposition::decompose() {
         const double pivot = pivot_row[pivot_index];
 
         // Update rows below the pivot row:
-        for (index_t i = pivot_index + 1; i < n;++i) {
+        for (index_t i = pivot_index + 1; i < n; ++i) {
             Matrix::Row &row = _mat[i];
-            const double multiplier = row[pivot_index]/pivot;
+            double &multiplier = row[pivot_index] /= pivot;
             // Subtract multiple of pivot row from current row:
             auto slice = std::slice(pivot_index + 1, n - pivot_index - 1, 1);
             row[slice] -= multiplier*pivot_row[slice];
-            row[pivot_index] = multiplier;  // write multiplier to lower triangle
         }
     }
 }
@@ -377,7 +385,7 @@ void LUDecomposition::scaledPartialPivoting(index_t pivot_index) {
         const auto &row = _mat[i];
         double max_abs_value = max_abs(begin(row) + pivot_index, end(row));  // scaling factor
         // if max_abs_value is zero, the whole row is, so the matrix is singular:
-        if (numcomp::isnull(max_abs_value, _tol)) throw SingularMatrixError();
+        if (max_abs_value < _tol) throw SingularMatrixError(_tol);
         // update max pivot:
         double scaled_pivot = std::abs(row[pivot_index])/max_abs_value;
         if (scaled_pivot > max_pivot.value) max_pivot = {scaled_pivot, i};
@@ -409,6 +417,19 @@ int lu(double **a, int n, int perm[], double tol) {
         freemat(a, n);
         return 0;
     }
+}
+
+//----- Exceptions -----//
+
+SingularMatrixError::SingularMatrixError(double tol, const std::string &details)
+        : BaseException(baseMessage, getDetails(details, tol)) {}
+
+std::string SingularMatrixError::getDetails(const std::string &details, double tol) {
+    std::ostringstream oss;
+    if (not details.empty()) oss << details << ", ";
+    oss.precision(2);
+    oss << "tol = " << std::scientific << tol;
+    return oss.str();
 }
 
 
