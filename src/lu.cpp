@@ -149,6 +149,7 @@ public:
 
 //----- LU -----//
 
+/// Representation of a permutation
 class Permutation {
 public:
     typedef std::valarray<index_t> Vector;
@@ -165,6 +166,7 @@ private:
     bool _parity = false;
 };
 
+/// This class handles the LU decomposition of a matrix
 class LUDecomposition {
 public:
     /**

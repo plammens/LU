@@ -6,8 +6,9 @@
 
 //---------- DECLARATIONS ----------//
 
-typedef std::valarray<double> Vector;
+typedef std::valarray<double> Vector;  ///< numerical real vector
 
+/// Compute the solution of a linear system given the LU decomposition of the matrix
 Vector solve(const LUDecomposition &luObj, const Vector &b);
 
 
@@ -21,26 +22,28 @@ void resol(double ** a , double x[] , double b[] , int n , int perm[]);
 #ifndef RESOL_DECLARATIONS_ONLY
 //---------- IMPLEMENTATION ----------//
 
-Vector solveLower(const Matrix &lower, const Vector &b, const Permutation::Vector &perm) {
-    const size_t n = lower.size();
+// Solve the linear system Ly = b
+Vector solveLower(const Matrix &L, const Vector &b, const Permutation::Vector &perm) {
+    const size_t n = L.size();
 
     Vector y(n);
     for (index_t i = 0; i < n; ++i) {
         double &elem = y[i] = b[perm[i]];
-        for (index_t j = 0; j < i; ++j) elem -= lower[i][j]*y[j];
+        for (index_t j = 0; j < i; ++j) elem -= L[i][j]*y[j];
     }
 
     return y;
 }
 
-Vector solveUpper(const Matrix &upper, const Vector &y) {
-    const size_t n = upper.size();
+// Solve the linear system of equations Ux = y
+Vector solveUpper(const Matrix &U, const Vector &y) {
+    const size_t n = U.size();
 
     Vector x(n);
     for (long i = n - 1; i >= 0; --i) {
         double &elem = x[i] = y[i];
-        for (index_t j = i + 1; j < n; ++j) elem -= upper[i][j]*x[j];
-        elem /= upper[i][i];
+        for (index_t j = i + 1; j < n; ++j) elem -= U[i][j]*x[j];
+        elem /= U[i][i];
     }
 
     return x;
