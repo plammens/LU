@@ -53,6 +53,7 @@ public:
     explicit Matrix(size_t n) : _n(n), _data(Row(0.0, _n), _n) {}
     Matrix(double **mat, size_t n); ///< Copy from array of pointers to rows
     Matrix(const InitList &init); ///< Construct a matrix from a 2D init list
+    Matrix() = default;
 
     /// Assign contents from init list:
     Matrix &operator=(const InitList &init);
@@ -62,8 +63,8 @@ public:
     inline const Data &data() { return _data; }
 
     // Subscript operators (const and non-const). operator() has bounds checking.
-    virtual double operator()(index_t i, index_t j) const;
-    virtual double &operator()(index_t i, index_t j);
+    double operator()(index_t i, index_t j) const;
+    double &operator()(index_t i, index_t j);
     const Row &operator[](index_t i) const { return _data[i]; }
     Row &operator[](index_t i) { return _data[i]; }
 
@@ -75,14 +76,13 @@ public:
     iterator begin();
     iterator end();
 
-protected:
+private:
     size_t _n;  ///< dimension of matrix
     Data _data;  ///< array of `std::valarray`s containing the matrix data
 
     // Throws exception if (i, j) is out-of-bounds (i.e. i >= _n or j >= _n)
     void checkMatrixBounds(index_t i, index_t j) const;
 
-private:
     class base_iterator;
 };
 
@@ -154,6 +154,8 @@ public:
     typedef std::valarray<index_t> Vector;
 
     explicit Permutation(size_t n);
+    Permutation() = default;
+
     void permute(index_t a, index_t b);
     inline const Vector &vector() const { return _vec; }
     inline bool parity() const { return _parity; }
@@ -172,6 +174,7 @@ public:
      * @throws SingularMatrixError if mat is singular
      */
     explicit LUDecomposition(const Matrix &mat, double tol = numcomp::DEFAULT_TOL);
+    LUDecomposition() = default;
 
     // getters:
     const Permutation &perm() const { return _perm; }
@@ -180,7 +183,7 @@ public:
 private:
     Matrix _mat;  ///< decomposition matrix (internal data storage)
     Permutation _perm;
-    double _tol;  ///< numerical tolerance
+    double _tol = numcomp::DEFAULT_TOL;  ///< numerical tolerance
 
     /// Performs the actual LU decomposition. Called upon construction.
     void decompose();

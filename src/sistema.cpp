@@ -1,3 +1,5 @@
+#include <utility>
+
 #ifndef LU_SISTEMA_CPP
 #define LU_SISTEMA_CPP
 
@@ -10,13 +12,25 @@
 
 //---------- DECLARATIONS ----------//
 
-struct SolveResult {
-    bool success;
-    Vector solution;
-
+class SolveResult {
+public:
     inline explicit
-    operator bool() const { return success; }
+    operator bool() const { return _success; }
+
+    const Vector &solution() const;
+    inline const LUDecomposition &luDecomp() const { return _luObj; }
+
+private:
+    bool _success = false;
+    LUDecomposition _luObj = {};
+    Vector _solution = {};
+
+    explicit SolveResult(bool success, Vector &&solution, LUDecomposition &&luObj);
+    SolveResult() = default;
+
+    friend SolveResult solve(const Matrix &, const Vector &, double tol);
 };
+
 
 SolveResult solve(const Matrix &A, const Vector &b, double tol = numcomp::DEFAULT_TOL);
 
@@ -27,14 +41,27 @@ int sistema(double **a, double x[], double b[], int n, double tol);
 
 
 
+
 #ifndef SISTEMA_DECLARATIONS_ONLY
 //---------- IMPLEMENTATION ----------//
 
 SolveResult solve(const Matrix &A, const Vector &b, double tol) {
     try {
         LUDecomposition luObj(A, tol);
-        return {true, solve(luObj, b)};
-    } catch (SingularMatrixError &) { return {false, {}}; }
+        return SolveResult(true, solve(luObj, b), std::move(luObj));
+    } catch (SingularMatrixError &) {
+        return SolveResult();
+    }
+}
+
+
+SolveResult::SolveResult(bool success, Vector &&solution, LUDecomposition &&luObj)
+        : _success(success), _luObj(std::move(luObj)), _solution(std::move(solution)) {}
+
+const Vector &SolveResult::solution() const {
+    if (not _success)
+        throw std::invalid_argument("invalid request for unsuccessful solve's solution");
+    return _solution;
 }
 
 
@@ -45,7 +72,9 @@ int sistema(double **a, double *x, double *b, int n, double tol) {
     Vector b_(b, n);
     SolveResult result = solve(mat, b_, tol);
     if (not result) return 0;
-    std::copy(begin(result.solution), end(result.solution), x);
+    const Vector &solution = result.solution();
+    std::copy(begin(solution), end(solution), x);
+    return result.luDecomp().perm().parity()? -1 : 1;
 }
 
 
