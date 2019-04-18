@@ -57,21 +57,21 @@ TEST_SUITE("lu") {
         SUBCASE("2 by 2") {
             Matrix test2 = {{1, 0},
                            {0, 1}};
-            CHECK(LUDecomposition(test2).getDecompMatrix() == test2);
+            CHECK(LUDecomposition(test2).decompMatrix() == test2);
 
             test2 = {{1, 0.5},
                      {1,   1}};
-            CHECK(LUDecomposition(test2).getDecompMatrix() == Matrix{{1, 0.5},
+            CHECK(LUDecomposition(test2).decompMatrix() == Matrix{{1, 0.5},
                                                                      {1, 0.5}});
 
             test2 = {{ 2, 5},
                      {-1, 1}};
-            CHECK(LUDecomposition(test2).getDecompMatrix() == Matrix{{-1, 1},
+            CHECK(LUDecomposition(test2).decompMatrix() == Matrix{{-1, 1},
                                                                      {-2, 7}});
 
             test2 = {{ 2,   3},
                      {-1, 0.5}};
-            CHECK(LUDecomposition(test2).getDecompMatrix() == Matrix{{-1, 0.5},
+            CHECK(LUDecomposition(test2).decompMatrix() == Matrix{{-1, 0.5},
                                                                      {-2,   4}});
         }
 
@@ -80,7 +80,7 @@ TEST_SUITE("lu") {
                             {0, 1, 0},
                             {1, 0, 0}};
             LUDecomposition lu(test3);
-            CHECK(lu.getDecompMatrix() == Matrix{{1., 0., 0.},
+            CHECK(lu.decompMatrix() == Matrix{{1., 0., 0.},
                                                  {0., 1., 0.},
                                                  {1., 2., 1.}});
             CHECK((lu.perm().vector() == std::valarray<index_t>{2, 1, 0}).min());

@@ -3,7 +3,7 @@
 
 #include <iosfwd>
 #define LU_DECLARATIONS_ONLY
-#include "../../src/lu.cpp"
+#include "lu.cpp"
 
 inline
 bool operator==(const Matrix &lhs, const Matrix &rhs) {

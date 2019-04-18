@@ -51,19 +51,17 @@ public:
 
     /// Create an n*n dense matrix
     explicit Matrix(size_t n) : _n(n), _data(Row(_n), _n) {}
+    Matrix(double **mat, size_t n); ///< Copy from array of pointers to rows
+    Matrix(const InitList &init); ///< Construct a matrix from a 2D init list
 
-    /// Copy from array of pointers to rows
-    Matrix(double **mat, size_t n);
-
-    /// Construct a matrix from a 2-dimensional init list
-    Matrix(const InitList &init);
+    /// Assign contents from init list:
     Matrix &operator=(const InitList &init);
 
     // Getters:
     inline size_t size() const { return _n; }
     inline const Data &data() { return _data; }
 
-    // Subscript operators (const and non-const):
+    // Subscript operators (const and non-const). operator() has bounds checking.
     virtual double operator()(index_t i, index_t j) const;
     virtual double &operator()(index_t i, index_t j);
     const Row &operator[](index_t i) const { return _data[i]; }
@@ -78,8 +76,8 @@ public:
     iterator end();
 
 protected:
-    size_t _n;  /// dimension of matrix
-    Data _data;  /// flat array containing the data
+    size_t _n;  ///< dimension of matrix
+    Data _data;  ///< array of `std::valarray`s containing the matrix data
 
     // Throws exception if (i, j) is out-of-bounds (i.e. i >= _n or j >= _n)
     void checkMatrixBounds(index_t i, index_t j) const;
@@ -87,6 +85,7 @@ protected:
 private:
     class base_iterator;
 };
+
 
 //----- Matrix::iterator -----//
 
@@ -152,12 +151,15 @@ public:
 
 class Permutation {
 public:
+    typedef std::valarray<index_t> Vector;
+
     explicit Permutation(size_t n);
     void permute(index_t a, index_t b);
-    inline const std::valarray<index_t> &vector() const { return _vec; }
+    inline const Vector &vector() const { return _vec; }
     inline bool parity() const { return _parity; }
+
 private:
-    std::valarray<index_t> _vec;
+    Vector _vec;
     bool _parity = false;
 };
 
@@ -169,12 +171,11 @@ public:
      * @param tol  numerical tolerance
      * @throws SingularMatrixError if mat is singular
      */
-    explicit
     LUDecomposition(const Matrix &mat, double tol = numcomp::DEFAULT_TOL);
 
     // getters:
     const Permutation &perm() const { return _perm; }
-    const Matrix &getDecompMatrix() { return _mat; }
+    const Matrix &decompMatrix() const { return _mat; }
 
 private:
     Matrix _mat;  ///< decomposition matrix (internal data storage)
@@ -200,14 +201,16 @@ public:
 //----- C-style array interface -----//
 
 /// Allocate space for an n by n matrix
-inline double **newmat(size_t n) {
+inline
+double **newmat(size_t n) {
     auto a = new double*[n];
     for (index_t i = 0; i < n; ++i) a[i] = new double[n]();
     return a;
 }
 
 /// Free memory occupied by an n by n matrix
-inline void freemat(double **a, size_t n) {
+inline
+void freemat(double **a, size_t n) {
     for (index_t i = 0; i < n; ++i) delete[] a[i];
     delete[] a;
 }
@@ -220,8 +223,8 @@ int lu(double **a, int n, int perm[], double tol);
 
 
 
-#ifndef LU_DECLARATIONS_ONLY
 
+#ifndef LU_DECLARATIONS_ONLY
 //--------------- IMPLEMENTATION ---------------//
 
 //----- Matrix -----//
@@ -391,11 +394,10 @@ void copy(const Matrix &mat, double **a) {
 }
 
 int lu(double **a, int n, int perm[], double tol) {
-    Matrix mat(a, n);
     try {
-        LUDecomposition lu(mat, tol);
-        const auto &luPerm = lu.perm();
-        copy(lu.getDecompMatrix(), a);
+        LUDecomposition luObj(Matrix{a, size_t(n)}, tol);
+        const auto &luPerm = luObj.perm();
+        copy(luObj.decompMatrix(), a);
         std::copy(begin(luPerm.vector()), end(luPerm.vector()), perm);
         return (luPerm.parity()? -1 : 1);
     } catch (SingularMatrixError &) {
