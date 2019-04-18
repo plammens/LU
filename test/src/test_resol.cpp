@@ -1,6 +1,6 @@
 #include <doctest.h>
-#include <iostream>
 #include "debug.h"
+
 #define RESOL_DECLARATIONS_ONLY
 #include "resol.cpp"
 

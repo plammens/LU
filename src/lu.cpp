@@ -50,7 +50,7 @@ public:
     typedef std::initializer_list<std::initializer_list<double>> InitList;
 
     /// Create an n*n dense matrix
-    explicit Matrix(size_t n) : _n(n), _data(Row(_n), _n) {}
+    explicit Matrix(size_t n) : _n(n), _data(Row(0.0, _n), _n) {}
     Matrix(double **mat, size_t n); ///< Copy from array of pointers to rows
     Matrix(const InitList &init); ///< Construct a matrix from a 2D init list
 
@@ -171,7 +171,7 @@ public:
      * @param tol  numerical tolerance
      * @throws SingularMatrixError if mat is singular
      */
-    LUDecomposition(const Matrix &mat, double tol = numcomp::DEFAULT_TOL);
+    explicit LUDecomposition(const Matrix &mat, double tol = numcomp::DEFAULT_TOL);
 
     // getters:
     const Permutation &perm() const { return _perm; }
