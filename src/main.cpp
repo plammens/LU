@@ -6,43 +6,15 @@
 #include <sstream>
 #include <regex>
 
-#define SISTEMA_DECLARATIONS_ONLY
-#include "sistema.cpp"
+#include "sistema.h"
+#include "errors.h"
 
 
 
 //---------- Exceptions ----------//
 
 
-class BaseException : public std::exception {
-protected:
-    std::string message;  ///< message to be returned by what()
 
-    BaseException() = default;
-    explicit BaseException(const char *baseMessage, const char *details) {
-        std::ostringstream oss(baseMessage, std::ios::ate);
-        if (details) oss << " (" << details << ')';
-        message = oss.str();
-    }
-
-public:
-    /// `std::exception`-compliant message getter
-    const char *what() const noexcept override { return message.c_str(); }
-};
-
-
-class IOError : public BaseException {
-public:
-    static constexpr auto base = "unable to access file";
-    explicit IOError(const char *specific = nullptr) : BaseException(base, specific) {}
-};
-
-
-class BadFormat : public BaseException {
-public:
-    static constexpr auto base = "bad input format";
-    explicit BadFormat(const char *specific = nullptr) : BaseException(base, specific) {}
-};
 
 
 
@@ -95,7 +67,7 @@ void printVector(const Vec &vec, std::ostream &os) {
 
     for (index_t i = 0; i < n; ++i)
         os << std::setw(width) << i << " \t"
-           << (vec[i] >= 0 ? " ": "")
+           << (vec[i] >= 0 ? " " : "")
            << std::scientific << std::setprecision(9) << vec[i]
            << '\n';
 }
@@ -103,7 +75,12 @@ void printVector(const Vec &vec, std::ostream &os) {
 void printResult(const SolveResult &result, std::ostream &os) {
     const Vector &x = result.solution();
 
-    os << '\n' << "residue: " << std::scientific << result.residue() << '\n';
+    printVector(x, os);
+    os << '\n' << "residue: "
+       << std::scientific << result.residue() << "\n\n";
+    os << "permutation vector:\n";
+    printVector(result.getLU().perm().vector(), os);
+
     os.flush();
 }
 
@@ -123,7 +100,7 @@ void parseFile(const char *filePath) {
     Matrix &&A = readMatrix(inputFile);
     Vector &&b = readVector(inputFile, A.size());
     auto result = solve(A, b);
-    if (not result) throw SingularMatrixError();
+    if (not result) throw SingularMatrixError(result.tol());
     else {
         std::ostringstream oss;
         oss << "SOLUTION_" << getFileName(filePath) << ".DAT";

@@ -2,8 +2,8 @@
 #define LU_DEBUG_H
 
 #include <iosfwd>
-#define LU_DECLARATIONS_ONLY
-#include "lu.cpp"
+
+#include "Matrix.h"
 
 inline
 bool operator==(const Matrix &lhs, const Matrix &rhs) {

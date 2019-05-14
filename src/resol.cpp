@@ -1,25 +1,6 @@
-#ifndef LU_RESOL_CPP
-#define LU_RESOL_CPP
-
-#define LU_DECLARATIONS_ONLY
-#include "lu.cpp"
-
-//---------- DECLARATIONS ----------//
-
-typedef std::valarray<double> Vector;  ///< numerical real vector
-
-/// Compute the solution of a linear system given the LU decomposition of the matrix
-Vector solve(const LUDecomposition &luObj, const Vector &b);
+#include "resol.h"
 
 
-//----- C-style interface -----//
-
-void resol(double ** a , double x[] , double b[] , int n , int perm[]);
-
-
-
-
-#ifndef RESOL_DECLARATIONS_ONLY
 //---------- IMPLEMENTATION ----------//
 
 // Solve the linear system Ly = b
@@ -50,7 +31,7 @@ Vector solveUpper(const Matrix &U, const Vector &y) {
 }
 
 
-Vector solve(const LUDecomposition &luObj, const Vector &b) {
+Vector solveLU(const LUDecomposition &luObj, const Vector &b) {
     const Matrix &decompMat = luObj.decompMatrix();
     const auto &perm = luObj.perm().vector();
     if (decompMat.size() != b.size())
@@ -74,9 +55,4 @@ void resol(double **a, double *x, double *b, int n, int *perm) {
     const Vector &&x_ = solveUpper(mat, y_);
     std::copy(begin(x_), end(x_), x);
 }
-
-
-#endif  // #ifndef RESOL_DECLARATIONS_ONLY
-
-#endif // #ifndef LU_RESOL_CPP
 

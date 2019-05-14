@@ -2,6 +2,10 @@
 #include <numeric>
 #include "debug.h"
 
+#include "LUDecomposition.h"
+#include "errors.h"
+#include "oldies.h"
+
 
 TEST_SUITE ("matrix") {
 

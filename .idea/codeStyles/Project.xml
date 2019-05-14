@@ -4,8 +4,10 @@
       <option name="KEEP_STRUCTURES_IN_ONE_LINE" value="true" />
     </Objective-C>
     <codeStyleSettings language="ObjectiveC">
+      <option name="BLANK_LINES_AROUND_CLASS" value="2" />
       <option name="BLANK_LINES_AROUND_METHOD" value="0" />
       <option name="BLANK_LINES_AROUND_METHOD_IN_INTERFACE" value="0" />
+      <option name="BLANK_LINES_AFTER_CLASS_HEADER" value="2" />
       <option name="SPACE_AROUND_MULTIPLICATIVE_OPERATORS" value="false" />
     </codeStyleSettings>
   </code_scheme>

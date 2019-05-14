@@ -2,7 +2,8 @@
 #include "debug.h"
 
 #define RESOL_DECLARATIONS_ONLY
-#include "resol.cpp"
+#include "resol.h"
+#include "oldies.h"
 
 
 TEST_SUITE("resol") {
@@ -13,8 +14,8 @@ TEST_SUITE("resol") {
                           {0, 1}};
             LUDecomposition luDecomp(id);
 
-            CHECK((solve(luDecomp, {3.14, 2.78}) == Vector{3.14, 2.78}).min());
-            CHECK((solve(luDecomp, {0, 0}) == Vector{0, 0}).min());
+            CHECK((solveLU(luDecomp, {3.14, 2.78}) == Vector{3.14, 2.78}).min());
+            CHECK((solveLU(luDecomp, {0, 0}) == Vector{0, 0}).min());
         }
 
         SUBCASE("1") {
@@ -22,7 +23,7 @@ TEST_SUITE("resol") {
                           {0, 1}};
 
             LUDecomposition luDecomp(mat);
-            CHECK((solve(luDecomp, {2, 3}) == Vector{-1, 3}).min());
+            CHECK((solveLU(luDecomp, {2, 3}) == Vector{-1, 3}).min());
         }
 
         SUBCASE("2") {
@@ -30,7 +31,7 @@ TEST_SUITE("resol") {
                           {1, 1}};
 
             LUDecomposition luDecomp(mat);
-            CHECK((solve(luDecomp, {2, 3}) == Vector{1, 2}).min());
+            CHECK((solveLU(luDecomp, {2, 3}) == Vector{1, 2}).min());
         }
 
         SUBCASE("3") {
@@ -38,7 +39,7 @@ TEST_SUITE("resol") {
                           {-2, 1.4}};
             LUDecomposition luDecomp(mat);
 
-            Vector x = solve(luDecomp, {1, 0});
+            Vector x = solveLU(luDecomp, {1, 0});
             CHECK(x[0] == 7./71);
             CHECK(x[1] == 10./71);
         }

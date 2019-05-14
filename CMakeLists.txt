@@ -7,7 +7,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -Wall -Wextra -fmax-errors=1")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -gdwarf-3 -g -ggdb3")
 
 
-set(Source src/lu.cpp src/resol.cpp src/sistema.cpp)
+file(GLOB Source "src/*.cpp")
+list(FILTER Source EXCLUDE REGEX main)
 include_directories(include libs/include test/include src/)
 
 add_library(LU OBJECT ${Source})

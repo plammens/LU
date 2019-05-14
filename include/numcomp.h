@@ -1,15 +1,15 @@
 /// @file
 /// Inline functions for numerical comparisons (header-only)
 
-#ifndef LU_NUMERIC_H
-#define LU_NUMERIC_H
+#ifndef LU_NUMCOMP_H
+#define LU_NUMCOMP_H
 
 #include <cmath>
 
 namespace numcomp {
-    
+
     constexpr const double DEFAULT_TOL = 1e-12;
-    
+
     inline
     bool equal(double a, double b, double tol = DEFAULT_TOL) {
         return std::abs(a - b) < tol;
@@ -42,4 +42,4 @@ namespace numcomp {
 
 }
 
-#endif //LU_NUMERIC_H
+#endif //LU_NUMCOMP_H

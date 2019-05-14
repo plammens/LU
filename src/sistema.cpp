@@ -1,91 +1,14 @@
-#ifndef LU_SISTEMA_CPP
-#define LU_SISTEMA_CPP
-
 #include <cassert>
 
-#define RESOL_DECLARATIONS_ONLY
-#define LU_DECLARATIONS_ONLY
+#include "resol.h"
+#include "sistema.h"
+#include "errors.h"
 
-#include "resol.cpp"
-#include "lu.cpp"
-
-
-//---------- DECLARATIONS ----------//
-
-/// Utility class to store the result of solving a linear system
-class SolveResult {
-public:
-    /// Returns whether solving was successful
-    inline explicit
-    operator bool() const { return _success; }
-
-    /**
-     * Numerical solution vector.
-     * @return the computed solution to the linear system
-     * @pre `bool(this)` is `true`.
-    */
-    const Vector &solution() const;
-
-    inline const LUDecomposition &getLU() const { return _luObj; }
-    inline double tol() const { return _success? _luObj.tol() : _tol; }
-    inline double residue() const { return _residue; }
-
-private:
-    bool _success = false;
-    LUDecomposition _luObj = {};
-    Vector _solution = {};
-    double _residue = 0.0;
-    double _tol = 0.0;
-
-    explicit SolveResult(bool success, LUDecomposition &&luObj, Vector &&solution);
-    explicit SolveResult(double tol) : _tol(tol) {}
-
-    friend SolveResult solve(const Matrix &, const Vector &, double tol);
-};
-
-
-/**
- * Solve the linear system Ax = b
- * @param A  matrix
- * @param b  vector of independent terms
- * @return  a SolveResult object which evaluates to `true` if
- * the procedure was successful, and `false` otherwise (A is singular).
- * In the former case, result.solution() will be the numerical solution to
- * the system Ax = b.
- */
-SolveResult solve(const Matrix &A, const Vector &b, double tol = numcomp::DEFAULT_TOL);
-
-/**
- * Calculate the relative residue for the approximate solution x
- * to the linear system Ax = b
- * @param A  matrix
- * @param x  approximate solution
- * @param b  vector of independent terms
- * @return  ||Ax - b||_∞/||x||_∞
- */
-double residue(const Matrix &A, const Vector &x, const Vector &b);
-
-
-enum NormType {
-    L1 = 0;
-    Inf = 3;
-};
-
-double conditionNumber1(const Matrix &A, NormType nt);
-
-
-//----- C-style interface -----//
-
-int sistema(double **a, double x[], double b[], int n, double tol);
-
-
-#ifndef SISTEMA_DECLARATIONS_ONLY
-//---------- IMPLEMENTATION ----------//
 
 SolveResult solve(const Matrix &A, const Vector &b, double tol) {
     try {
         LUDecomposition luObj(A, tol);
-        auto &&res = SolveResult(true, std::move(luObj), solve(luObj, b));
+        auto &&res = SolveResult(true, std::move(luObj), solveLU(luObj, b));
         res._residue = residue(A, res._solution, b);
         return std::move(res);
     } catch (SingularMatrixError &) {
@@ -127,35 +50,35 @@ double residue(const Matrix &A, const Vector &x, const Vector &b) {
 }
 
 
-double conditionNumber(const Matrix &A, NormType nt) {
-    // TODO: implement inverse
-    switch (nt) {
-        case NormType::L1: return norm1(A);
-        case NormType::Inf: return normInf(A);
-    }
-}
+//double conditionNumber(const Matrix &A, NormType nt) {
+//    // TODO: implement inverse
+//    switch (nt) {
+//        case NormType::L1: return norm1(A);
+//        case NormType::Inf: return normInf(A);
+//    }
+//}
 
 
-double norm1(const Matrix& A) {
-    size_t n = A.size();
-    Vector colSums(0.0, n);
-    
-    for (const Matrix::Row &row : A)
-        colSums += std::abs(row);
-        
-    return colSums.max();
-}
-
-
-double normInf(const Matrix&A) {
-    size_t n = A.size();
-    double maxSum = 0.0;
-    
-    for (const Matrix::Row &row : A)
-        maxSum = std::max(maxSum, std::abs(row).sum());
-        
-    return maxSum;
-}
+//double norm1(const Matrix& A) {
+//    size_t n = A.size();
+//    Vector colSums(0.0, n);
+//
+//    for (const Matrix::Row &row : A)
+//        colSums += std::abs(row);
+//
+//    return colSums.max();
+//}
+//
+//
+//double normInf(const Matrix&A) {
+//    size_t n = A.size();
+//    double maxSum = 0.0;
+//
+//    for (const Matrix::Row &row : A)
+//        maxSum = std::max(maxSum, std::abs(row).sum());
+//
+//    return maxSum;
+//}
 
 
 
@@ -170,8 +93,3 @@ int sistema(double **a, double *x, double *b, int n, double tol) {
     std::copy(begin(solution), end(solution), x);
     return result.getLU().perm().parity() ? -1 : 1;
 }
-
-
-#endif  // #ifndef SISTEMA_DECLARATIONS_ONLY
-
-#endif  // #ifndef LU_SISTEMA_CPP

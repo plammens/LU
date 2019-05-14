@@ -1,8 +1,8 @@
 #include <doctest.h>
 #include "debug.h"
 
-#define SISTEMA_DECLARATIONS_ONLY
-#include "sistema.cpp"
+#include "sistema.h"
+#include "oldies.h"
 
 
 TEST_SUITE("sistema") {
