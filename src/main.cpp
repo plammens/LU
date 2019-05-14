@@ -10,20 +10,12 @@
 #include "errors.h"
 
 
-
-//---------- Exceptions ----------//
-
-
-
-
-
-
 //---------- Helper functions ----------//
 
 Matrix readMatrix(std::istream &is) {
     size_t n = 0, m = 0;
     is >> n >> m;
-    if (m > n*n)
+    if (m > n * n)
         throw BadFormat("number of elements larger than n^2 while reading matrix");
 
     Matrix mat(n);
@@ -93,7 +85,7 @@ std::string getFileName(const std::string &path) {
 }
 
 
-void parseFile(const char *filePath) {
+std::string solveFile(const char *filePath) {
     std::ifstream inputFile(filePath);
     if (not inputFile.is_open()) throw IOError(filePath);
 
@@ -108,6 +100,7 @@ void parseFile(const char *filePath) {
         std::ofstream outFile(outName);
         if (not outFile.is_open()) throw IOError(outName.c_str());
         printResult(result, outFile);
+        return outName;
     }
 };
 
@@ -122,10 +115,17 @@ void printError(const char *message, const char *arg = nullptr) {
 //---------- main ----------//
 
 int main(int argc, char *argv[]) {
+    if (argc <= 1) std::cout << "no files to process" << std::endl;
     for (int i = 1; i < argc; ++i) {
-        try { parseFile(argv[i]); }
+        try {
+            auto iName = argv[i];
+            auto oName = solveFile(iName);
+            std::cout << "written solution of " << iName
+                      << " to " << oName << std::endl;
+        }
         catch (std::exception &e) { printError(e.what()); }
     }
+    std::cout << std::endl;
 }
 
 
