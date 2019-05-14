@@ -65,6 +65,13 @@ SolveResult solve(const Matrix &A, const Vector &b, double tol = numcomp::DEFAUL
 double residue(const Matrix &A, const Vector &b, const Vector &x);
 
 
+enum NormType {
+    L1 = 0;
+    Inf = 3;
+};
+
+double conditionNumber1(const Matrix &A, NormType nt);
+
 
 //----- C-style interface -----//
 
@@ -120,6 +127,38 @@ double norm(const Vector &v) {
 double residue(const Matrix &A, const Vector &b, const Vector &x) {
     return norm(A*x - b)/norm(x);
 }
+
+
+double conditionNumber(const Matrix &A, NormType nt) {
+    // TODO: implement inverse
+    switch (nt) {
+        case NormType::L1: return norm1(A);
+        case NormType::Inf: return normInf(A);
+    }
+}
+
+
+double norm1(const Matrix& A) {
+    size_t n = A.size();
+    Vector colSums(0.0, n);
+    
+    for (const Matrix::Row &row : A)
+        colSums += std::abs(row);
+        
+    return colSums.max();
+}
+
+
+double normInf(const Matrix&A) {
+    size_t n = A.size();
+    double maxSum = 0.0;
+    
+    for (const Matrix::Row &row : A)
+        maxSum = std::max(maxSum, std::abs(row).sum());
+        
+    return maxSum;
+}
+
 
 
 //----- C-style interface -----//
