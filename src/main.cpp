@@ -14,7 +14,21 @@
 //---------- Exceptions ----------//
 
 
+class BaseException : public std::exception {
+protected:
+    std::string message;  ///< message to be returned by what()
 
+    BaseException() = default;
+    explicit BaseException(const char *baseMessage, const char *details) {
+        std::ostringstream oss(baseMessage, std::ios::ate);
+        if (details) oss << " (" << details << ')';
+        message = oss.str();
+    }
+
+public:
+    /// `std::exception`-compliant message getter
+    const char *what() const noexcept override { return message.c_str(); }
+};
 
 
 class IOError : public BaseException {
@@ -71,19 +85,25 @@ unsigned noDigits(Integer num) {
     unsigned count = 1;
     for (num /= 10; num > 0; ++count) num /= 10;
     return count;
-}
+};
 
-void printResult(const SolveResult &result, std::ostream &os) {
-    const Vector &x = result.solution();
-    const size_t n = x.size();
+
+template<typename Vec>
+void printVector(const Vec &vec, std::ostream &os) {
+    size_t n = vec.size();
     const unsigned width = noDigits(n);
 
     for (index_t i = 0; i < n; ++i)
         os << std::setw(width) << i << " \t"
-           << (x[i] >= 0 ? " ": "") << std::scientific << std::setprecision(9) << x[i]
+           << (vec[i] >= 0 ? " ": "")
+           << std::scientific << std::setprecision(9) << vec[i]
            << '\n';
+}
 
-    os << '\n' << "relative residue: " << std::scientific << result.residue() << '\n';
+void printResult(const SolveResult &result, std::ostream &os) {
+    const Vector &x = result.solution();
+
+    os << '\n' << "residue: " << std::scientific << result.residue() << '\n';
     os.flush();
 }
 
@@ -96,17 +116,14 @@ std::string getFileName(const std::string &path) {
 }
 
 
-// Parses the contents of a matrix file, solves the system
-// and returns the file path of the output file
-std::string parseFile(const char *filePath) {
+void parseFile(const char *filePath) {
     std::ifstream inputFile(filePath);
     if (not inputFile.is_open()) throw IOError(filePath);
 
     Matrix &&A = readMatrix(inputFile);
     Vector &&b = readVector(inputFile, A.size());
     auto result = solve(A, b);
-
-    if (not result) throw SingularMatrixError(result.tol(), filePath);
+    if (not result) throw SingularMatrixError();
     else {
         std::ostringstream oss;
         oss << "SOLUTION_" << getFileName(filePath) << ".DAT";
@@ -114,9 +131,8 @@ std::string parseFile(const char *filePath) {
         std::ofstream outFile(outName);
         if (not outFile.is_open()) throw IOError(outName.c_str());
         printResult(result, outFile);
-        return outName;
     }
-}
+};
 
 inline
 void printError(const char *message, const char *arg = nullptr) {
@@ -130,14 +146,8 @@ void printError(const char *message, const char *arg = nullptr) {
 
 int main(int argc, char *argv[]) {
     for (int i = 1; i < argc; ++i) {
-        try {
-            std::cout << "solving " << argv[i] << "... " << std::flush;
-            std::string &&outName = parseFile(argv[i]);
-            std::cout << "done. -> " << outName << std::endl;
-        } catch (std::exception &e) {
-            std::cout << std::endl;
-            printError(e.what());
-        }
+        try { parseFile(argv[i]); }
+        catch (std::exception &e) { printError(e.what()); }
     }
 }
 
