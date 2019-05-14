@@ -100,20 +100,18 @@ debug: CXXFLAGS += -Wall -Og
 debug: build
 
 
-libs: $(LIB_FILE_DIR)/libPNGwriter.a | .pre-lib
-	@printf "\e[1mDone building libs.\e[0m\n\n"
-
-
 run: build
 	@echo
-	@printf "\e[1mExecuting main program...\e[0m ($(MAIN_EXE))\n\n"
-	@$(MAIN_EXE)
+	@printf "\e[1mExecuting main program...\e[0m\n"
+	$(MAIN_EXE) $(ARGS)
+	@echo
 	@echo
 
 test: build-test
 	@echo
-	@printf "\e[1mStarting $(TEST_SUITE)...\e[0m ($(TEST_EXE) $(ARGS))\n\n"
-	@$(TEST_EXE) $(ARGS)
+	@printf "\e[1mStarting $(TEST_SUITE)...\e[0m\n"
+	$(TEST_EXE) $(ARGS)
+	@echo
 	@echo
 
 
@@ -123,27 +121,13 @@ clean-build:
 	rm -rf ./$(BUILD_DIR)
 
 clean-out:
-	rm -rf *.DAT
-
-
-docs:
-	doxygen $(DOCS_DIR)/Doxyfile
-
-view-docs:
-	$(BROWSER) $(DOCS_DIR)/html/index.html &
-
-mdebug:
-	@echo "(objects):"
-	@echo $(CXX_TEST_LINK_FLAGS)
+	rm -rf SOLUTION*.DAT
 
 
 # Just some text:
 
 .pre-build:
 	@printf "\e[1mBuilding main program...\e[0m\n"
-
-.pre-lib:
-	@printf "\e[1mBuilding libraries...\e[0m\n"
 
 .pre-build-test:
 	@printf "\e[1mBuilding tests...\e[0m\n"
@@ -175,15 +159,6 @@ $(OBJ_DIR):
 
 $(DEP_DIR):
 	mkdir -p $(DEP_DIR)
-
-
-############## Library rules ##############
-
-# Build PNGwriter library from source:
-$(LIB_FILE_DIR)/libPNGwriter.a:
-	cmake $(LIB_ROOT_DIR)/pngwriter/CMakeLists.txt -DPNGwriter_USE_FREETYPE=OFF -DCMAKE_INSTALL_PREFIX=$(LIB_ROOT_DIR)
-	make -C $(LIB_ROOT_DIR)/pngwriter --no-print-directory
-	make -C $(LIB_ROOT_DIR)/pngwriter install --no-print-directory
 
 
 

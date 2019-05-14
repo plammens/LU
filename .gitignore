@@ -35,3 +35,4 @@
 
 *.DAT
 db/
+build/

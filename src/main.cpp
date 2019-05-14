@@ -125,7 +125,6 @@ int main(int argc, char *argv[]) {
         }
         catch (std::exception &e) { printError(e.what()); }
     }
-    std::cout << std::endl;
 }
 
 
