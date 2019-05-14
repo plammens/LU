@@ -87,17 +87,28 @@ unsigned noDigits(Integer num) {
     return count;
 };
 
-void printResult(const SolveResult &result, std::ostream &os) {
-    const Vector &x = result.solution();
-    const size_t n = x.size();
-    const unsigned width = noDigits(n);
 
+template<typename Vec>
+void printVector(const Vec &vec, std::ostream &os) {
+    size_t n = vec.size();
+    const unsigned width = noDigits(n);
+    
     for (index_t i = 0; i < n; ++i)
         os << std::setw(width) << i << " \t"
-           << (x[i] >= 0 ? " ": "") << std::scientific << std::setprecision(9) << x[i]
+           << (vec[i] >= 0 ? " ": "") 
+           << std::scientific << std::setprecision(9) << vec[i]
            << '\n';
+}
 
-    os << '\n' << "residue: " << std::scientific << result.residue() << '\n';
+void printResult(const SolveResult &result, std::ostream &os) {
+    const Vector &x = result.solution();
+
+    printVector(x, os);
+    os << '\n' << "residue: " 
+       << std::scientific << result.residue() << "\n\n";
+    os << "permutation vector:\n";
+    printVector(result.getLU().perm().vector(), os);
+    
     os.flush();
 }
 
