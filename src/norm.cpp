@@ -7,6 +7,7 @@
 #include <cmath>
 #include <functional>
 #include "errors.h"
+#include "inverse.h"
 
 
 VectorNorm getVectorNorm(NormType nt) {
@@ -68,9 +69,9 @@ double conditionNumber(const Matrix &A, const Matrix &AInv, NormType nt) {
     return matNorm(A)*matNorm(AInv);
 }
 
-double conditionNumber(const Matrix &A, const LUDecomposition &LU, NormType nt) {
+double conditionNumber(const Matrix &A, const LUDecomposition &luObj, NormType nt) {
     // TODO: inverse
-    return conditionNumber(A, inv(A), nt);
+    return conditionNumber(A, inverse(luObj), nt);
 }
 
 double conditionNumber(const Matrix &A, NormType nt) {

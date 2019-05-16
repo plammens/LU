@@ -42,13 +42,13 @@ double conditionNumber(const Matrix &A, NormType nt);
 /**
  * Condition number of a matrix, given its inverse
  * @param A  matrix
- * @param LU  LU decomposition of `A`
+ * @param luObj  LU decomposition of `A`
  * @param nt  norm type
  * @return  the condition number of `A` under the given norm type
  *
  * @pre  `LU` is the LU decomposition of `A`
  */
-double conditionNumber(const Matrix &A, const LUDecomposition &LU, NormType nt);
+double conditionNumber(const Matrix &A, const LUDecomposition &luObj, NormType nt);
 
 /**
  * Condition number of a matrix, given its inverse
