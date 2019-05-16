@@ -26,20 +26,6 @@ const Vector &SolveResult::solution() const {
     return _solution;
 }
 
-Vector operator*(const Matrix &A, const Vector &v) {
-    const size_t n = A.size();
-    assert(n == v.size());
-
-    Vector result(0.0, n);
-    for (index_t i = 0; i < n; ++i) {
-        double &elem = result[i];
-        for (index_t j = 0; j < n; ++j)
-            elem += A[i][j]*v[j];
-    }
-
-    return result;
-}
-
 double residue(const Matrix &A, const Vector &x, const Vector &b) {
     return normInf(A*x - b)/normInf(x);
 }

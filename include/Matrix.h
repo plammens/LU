@@ -5,8 +5,8 @@
 #ifndef LU_MATRIX_H
 #define LU_MATRIX_H
 
-#include <valarray>
 #include <iterator>
+#include "Vector.h"
 #include "aliases.h"
 
 typedef size_t index_t;
@@ -15,7 +15,7 @@ typedef size_t index_t;
 /// Representation of a square matrix
 class Matrix {
 public:
-    typedef std::valarray<double> Row;
+    typedef Vector Row;
     typedef std::valarray<Row> Data;
     typedef std::initializer_list<std::initializer_list<double>> InitList;
 
@@ -38,6 +38,9 @@ public:
     const Row &operator[](index_t i) const { return _data[i]; }
     Row &operator[](index_t i) { return _data[i]; }
 
+    // Operations
+    Matrix &operator+=(const Matrix &other);
+    Matrix &operator-=(const Matrix &other);
 
     // Iterator stuff:
     class iterator;
@@ -59,9 +62,15 @@ private:
 };
 
 
+//-------------------- Matrix operations -------------------//
+
+Vector operator*(const Matrix &A, const Vector &v);
+Matrix operator*(const Matrix &A, const Matrix &B);
+Matrix operator+(const Matrix &A, const Matrix &B);
+Matrix operator-(const Matrix &A, const Matrix &B);
 
 
-//----- Matrix::iterator -----//
+//-------------------- Matrix::iterator -------------------//
 
 class Matrix::base_iterator
         : public std::iterator<std::random_access_iterator_tag, double> {

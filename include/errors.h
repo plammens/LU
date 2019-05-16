@@ -11,13 +11,13 @@
 
 /// Abstract base exception class
 class BaseException : public std::exception {
-public:
+protected:
     std::string message;  ///< message to be returned by what()
 
     BaseException() = default;
     explicit BaseException(const char *baseMessage, const std::string &details);
-    ~BaseException() noexcept override = 0;
 
+public:
     /// `std::exception`-compliant message getter
     const char *what() const noexcept override { return message.c_str(); }
 };
