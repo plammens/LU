@@ -15,6 +15,7 @@ VectorNorm getVectorNorm(NormType nt) {
         case NormType::L1: return norm1;
         case NormType::L2: return norm2;
         case NormType::Inf: return normInf;
+        default: throw ValueError("unknown vector norm");
     }
 }
 
@@ -70,7 +71,6 @@ double conditionNumber(const Matrix &A, const Matrix &AInv, NormType nt) {
 }
 
 double conditionNumber(const Matrix &A, const LUDecomposition &luObj, NormType nt) {
-    // TODO: inverse
     return conditionNumber(A, inverse(luObj), nt);
 }
 

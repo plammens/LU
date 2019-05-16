@@ -8,6 +8,7 @@
 
 #include "sistema.h"
 #include "errors.h"
+#include "norm.h"
 
 
 //---------- Helper functions ----------//
@@ -53,25 +54,32 @@ unsigned noDigits(Integer num) {
 
 
 template<typename Vec>
-void printVector(const Vec &vec, std::ostream &os) {
+void printVector(const Vec &vec, std::ostream &os, const char *title = "") {
     size_t n = vec.size();
     const unsigned width = noDigits(n);
 
+    if (title and *title != '\0') os << title << ":\n";
     for (index_t i = 0; i < n; ++i)
         os << std::setw(width) << i << " \t"
            << (vec[i] >= 0 ? " " : "")
            << std::scientific << std::setprecision(9) << vec[i]
            << '\n';
+
+    os << '\n';
 }
 
-void printResult(const SolveResult &result, std::ostream &os) {
+void printInfoNumber(double infoNum, std::ostream &os, const char *title) {
+    os << title << ": " << std::scientific << infoNum << "\n\n";
+}
+
+void printResult(const SolveResult &result, const ExtraSolveInfo &info, std::ostream &os) {
     const Vector &x = result.solution();
 
-    printVector(x, os);
-    os << '\n' << "residue: "
-       << std::scientific << result.residue() << "\n\n";
-    os << "permutation vector:\n";
-    printVector(result.getLU().perm().vector(), os);
+    printVector(x, os); os << '\n';
+    printInfoNumber(info.residue, os, "residue");
+    printInfoNumber(info.cond1, os, "condition number μ_1");
+    printInfoNumber(info.condInf, os, "condition number μ_Inf");
+    printVector(result.getLU().perm().vector(), os, "permutation vector");
 
     os.flush();
 }
@@ -92,6 +100,8 @@ std::string solveFile(const char *filePath) {
     Matrix &&A = readMatrix(inputFile);
     Vector &&b = readVector(inputFile, A.size());
     auto result = solve(A, b);
+    ExtraSolveInfo info = getExtraSolveInfo(A, b, result);
+
     if (not result) throw SingularMatrixError(result.tol());
     else {
         std::ostringstream oss;
@@ -99,7 +109,7 @@ std::string solveFile(const char *filePath) {
         std::string outName = oss.str();
         std::ofstream outFile(outName);
         if (not outFile.is_open()) throw IOError(outName.c_str());
-        printResult(result, outFile);
+        printResult(result, info, outFile);
         return outName;
     }
 };

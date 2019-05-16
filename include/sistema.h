@@ -25,14 +25,12 @@ public:
 
     inline const LUDecomposition &getLU() const { return _luObj; }
     inline double tol() const { return _success ? _luObj.tol() : _tol; }
-    inline double residue() const { return _residue; }
 
 private:
     bool _success = false;
     LUDecomposition _luObj = {};
     Vector _solution = {};
-    double _residue = 0.0;
-    double _tol = 0.0;
+    double _tol = numcomp::DEFAULT_TOL; ///< tolerance used
 
     explicit SolveResult(bool success, LUDecomposition &&luObj, Vector &&solution);
     explicit SolveResult(double tol) : _tol(tol) {}
@@ -62,6 +60,14 @@ SolveResult solve(const Matrix &A, const Vector &b, double tol = numcomp::DEFAUL
  */
 double residue(const Matrix &A, const Vector &x, const Vector &b);
 
+struct ExtraSolveInfo {
+    double residue;
+    double cond1;
+    double condInf;
+};
+
+/// Fill an ExtraSolveInfo struct with data from the solve result of Ax = b
+ExtraSolveInfo getExtraSolveInfo(const Matrix &A, const Vector &b, const SolveResult &res);
 
 //----- C-style interface -----//
 
