@@ -11,6 +11,10 @@
 #include "norm.h"
 
 
+// Constants
+const unsigned PRECISION = 12;
+
+
 //---------- Helper functions ----------//
 
 Matrix readMatrix(std::istream &is) {
@@ -62,7 +66,7 @@ void printVector(const Vec &vec, std::ostream &os, const char *title = "") {
     for (index_t i = 0; i < n; ++i)
         os << std::setw(width) << i << " \t"
            << (vec[i] >= 0 ? " " : "")
-           << std::scientific << std::setprecision(9) << vec[i]
+           << std::scientific << vec[i]
            << '\n';
 
     os << '\n';
@@ -73,9 +77,9 @@ void printInfoNumber(double infoNum, std::ostream &os, const char *title) {
 }
 
 void printResult(const SolveResult &result, const ExtraSolveInfo &info, std::ostream &os) {
-    const Vector &x = result.solution();
+    os.precision(PRECISION);
 
-    printVector(x, os); os << '\n';
+    printVector(result.solution(), os);
     printInfoNumber(info.residue, os, "residue");
     printInfoNumber(info.cond1, os, "condition number μ_1");
     printInfoNumber(info.condInf, os, "condition number μ_Inf");
@@ -100,18 +104,16 @@ std::string solveFile(const char *filePath) {
     Matrix &&A = readMatrix(inputFile);
     Vector &&b = readVector(inputFile, A.size());
     auto result = solve(A, b);
+    if (not result) throw SingularMatrixError(result.tol());
     ExtraSolveInfo info = getExtraSolveInfo(A, b, result);
 
-    if (not result) throw SingularMatrixError(result.tol());
-    else {
-        std::ostringstream oss;
-        oss << "SOLUTION_" << getFileName(filePath) << ".DAT";
-        std::string outName = oss.str();
-        std::ofstream outFile(outName);
-        if (not outFile.is_open()) throw IOError(outName.c_str());
-        printResult(result, info, outFile);
-        return outName;
-    }
+    std::ostringstream oss;
+    oss << "SOLUTION_" << getFileName(filePath) << ".DAT";
+    std::string outName = oss.str();
+    std::ofstream outFile(outName);
+    if (not outFile.is_open()) throw IOError(outName.c_str());
+    printResult(result, info, outFile);
+    return outName;
 };
 
 inline
