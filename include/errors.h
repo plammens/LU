@@ -33,6 +33,11 @@ private:
     static std::string getDetails(const std::string &details, double tol);
 };
 
+class ValueError : public BaseException {
+public:
+    static constexpr auto base = "invalid value";
+    explicit ValueError(const char *specific = nullptr) : BaseException(base, specific) {}
+};
 
 class IOError : public BaseException {
 public:

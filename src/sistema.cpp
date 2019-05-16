@@ -50,35 +50,7 @@ double residue(const Matrix &A, const Vector &x, const Vector &b) {
 }
 
 
-//double conditionNumber(const Matrix &A, NormType nt) {
-//    // TODO: implement inverse
-//    switch (nt) {
-//        case NormType::L1: return norm1(A);
-//        case NormType::Inf: return normInf(A);
-//    }
-//}
 
-
-//double norm1(const Matrix& A) {
-//    size_t n = A.size();
-//    Vector colSums(0.0, n);
-//
-//    for (const Matrix::Row &row : A)
-//        colSums += std::abs(row);
-//
-//    return colSums.max();
-//}
-//
-//
-//double normInf(const Matrix&A) {
-//    size_t n = A.size();
-//    double maxSum = 0.0;
-//
-//    for (const Matrix::Row &row : A)
-//        maxSum = std::max(maxSum, std::abs(row).sum());
-//
-//    return maxSum;
-//}
 
 
 

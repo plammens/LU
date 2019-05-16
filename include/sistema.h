@@ -63,14 +63,6 @@ SolveResult solve(const Matrix &A, const Vector &b, double tol = numcomp::DEFAUL
 double residue(const Matrix &A, const Vector &x, const Vector &b);
 
 
-//enum NormType {
-//    L1 = 0;
-//    Inf = 3;
-//};
-//
-//double conditionNumber1(const Matrix &A, NormType nt);
-
-
 //----- C-style interface -----//
 
 int sistema(double **a, double x[], double b[], int n, double tol);
