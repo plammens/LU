@@ -8,13 +8,26 @@
 #include <sstream>
 #include <exception>
 #include <fstream>
-#include <iomanip>
 #include "norm.h"
 #include "errors.h"
 #include "sistema.h"
 
-// Constants
-const unsigned PRECISION = 12;
+
+std::string getOutName(const char *iname);
+
+Vector readVector(std::istream &is, size_t n) {
+    size_t k = 0;
+    is >> k;
+
+    Vector vec(0.0, n);
+    for (; k > 0; --k) {
+        index_t i;
+        is >> i;
+        is >> vec[i];
+    }
+
+    return vec;
+}
 
 Matrix readMatrix(std::istream &is) {
     size_t n = 0, m = 0;
@@ -33,45 +46,11 @@ Matrix readMatrix(std::istream &is) {
     return mat;
 }
 
-Vector readVector(std::istream &is, size_t n) {
-    size_t k = 0;
-    is >> k;
-
-    Vector vec(0.0, n);
-    for (; k > 0; --k) {
-        index_t i;
-        is >> i;
-        is >> vec[i];
-    }
-
-    return vec;
-}
-
-template<typename Integer>
-unsigned noDigits(Integer num) {
-    unsigned count = 1;
-    for (num /= 10; num > 0; ++count) num /= 10;
-    return count;
-}
-
-template<typename Vec>
-void printVector(const Vec &vec, std::ostream &os, const char *title = "") {
-    size_t n = vec.size();
-    const unsigned width = noDigits(n);
-
-    if (title and *title != '\0') os << title << ":\n";
-    for (index_t i = 0; i < n; ++i)
-        os << std::setw(width) << i << " \t"
-           << (vec[i] >= 0 ? " " : "")
-           << std::scientific << vec[i]
-           << '\n';
-
-    os << '\n';
-}
-
 void printInfoNumber(double infoNum, std::ostream &os, const char *title) {
     os << title << ": " << std::scientific << infoNum << "\n\n";
 }
+
+
 
 void printResult(const SolveResult &result, const ExtraSolveInfo &info, std::ostream &os) {
     os.precision(PRECISION);
@@ -94,8 +73,7 @@ std::string getFileName(const std::string &path) {
 }
 
 std::string solveFile(const char *filePath) {
-    std::ifstream inputFile(filePath);
-    if (not inputFile.is_open()) throw IOError(filePath);
+    std::ifstream inputFile = openFile(filePath);
 
     Matrix &&A = readMatrix(inputFile);
     Vector &&b = readVector(inputFile, A.size());
@@ -103,11 +81,29 @@ std::string solveFile(const char *filePath) {
     if (not result) throw SingularMatrixError(result.tol());
     ExtraSolveInfo info = getExtraSolveInfo(A, b, result);
 
-    std::ostringstream oss;
-    oss << "SOLUTION_" << getFileName(filePath) << ".DAT";
-    std::string outName = oss.str();
-    std::ofstream outFile(outName);
-    if (not outFile.is_open()) throw IOError(outName.c_str());
+    auto oname = getOutName(filePath);
+    auto outFile = writeFile(oname);
     printResult(result, info, outFile);
+    return oname;
+}
+
+std::ifstream openFile(const char *path) {
+    std::ifstream inputFile(path);
+    if (not inputFile.is_open()) throw IOError(path);
+    return inputFile;
+}
+
+
+std::ofstream writeFile(const std::string &oname) {
+    std::ofstream outFile(oname);
+    if (not outFile.is_open()) throw IOError(oname.c_str());
+    return outFile;
+}
+
+
+std::string getOutName(const char *iname) {
+    std::ostringstream oss;
+    oss << "SOLUTION_" << getFileName(iname) << ".DAT";
+    std::string outName = oss.str();
     return outName;
 }
