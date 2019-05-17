@@ -19,7 +19,7 @@ public:
 
     void permute(index_t a, index_t b);
     inline const Vector &vector() const { return _vec; }
-    inline bool parity() const { return _parity; }
+    inline bool parity() const { return _parity; }  ///< 0 if even, 1 if odd
 
 private:
     Vector _vec;

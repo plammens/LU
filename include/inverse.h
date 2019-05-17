@@ -10,7 +10,7 @@
 /**
  * Matrix inverse through LU decomposition.
  * @param A  matrix to invert
- * @return  the inverse of `A` if `A` is nonsingular
+ * @return  the inverse of `A` if `A` is non-singular
  * @throws  SingularMatrixError if `A` is singular
  */
 Matrix inverse(const Matrix &A);
@@ -18,8 +18,7 @@ Matrix inverse(const Matrix &A);
 /**
  * Matrix inverse given its LU decomposition.
  * @param luObj  lu decomposition of the matrix to invert
- * @return  the inverse of `A` if `A` is nonsingular
- * @throws  SingularMatrixError if `A` is singular
+ * @return  the inverse of the matrix
  */
 Matrix inverse(const LUDecomposition &luObj);
 
